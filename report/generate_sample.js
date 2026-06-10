@@ -4,7 +4,7 @@ const { spawnSync } = require("child_process");
 const PptxGenJS = require("pptxgenjs");
 
 const OUT_DIR = path.join(__dirname, "output");
-const OUT_FILE = path.join(OUT_DIR, "甬辉_八页样板.pptx");
+const OUT_FILE = path.join(OUT_DIR, "甬辉_完整诊断报告_12页.pptx");
 const RADAR_FILE = path.join(OUT_DIR, "dimension_radar.png");
 const REVIEWED = process.argv.includes("--reviewed");
 
@@ -250,6 +250,58 @@ const dimensionLabels = [
   ["capability", "内部能力"],
   ["finance", "财务"],
 ];
+
+const closingPages = {
+  cross_resonances: [
+    {
+      fact: "前三大客户占65%",
+      left_label: "竞争维解读",
+      left_title: "认证、适配和多年合作形成潜在切换成本",
+      left_detail: "如果这些合作依赖合格供应商认证、定制化适配和稳定交付，集中度就不只是依赖，也可能是后来者难以进入的门槛。",
+      right_label: "财务维解读",
+      right_title: "客户集中放大回款、议价与现金流波动",
+      right_detail: "同一个65%，在财务上意味着一旦大客户压价、延迟回款或调整采购节奏，1.6个月现金跑道会被迅速击穿。",
+    },
+    {
+      fact: "法兰/排水配件年净贡献-410万",
+      left_label: "商业模式解读",
+      left_title: "它可能是全品类代工承诺的一部分",
+      left_detail: "这条线可能承担补齐品类、维持一站式供给的角色，所以不能只看单品盈亏就粗暴砍掉。",
+      right_label: "财务维解读",
+      right_title: "它也是持续吞噬利润的失血点",
+      right_detail: "如果没有清晰的带单、锁客或提价机制，-410万就不是战略投入，而是被规模掩盖的利润黑洞。",
+    },
+  ],
+  confirmed_reversals: [
+    {
+      naive_reading: "客户集中度65%是单纯软肋",
+      reframe: "它也可能是被认证、适配和长期合作绑定出来的切换成本壁垒",
+      status: "需人工核验",
+      depends_on: ["北美大客户认证是否真实排他", "定制适配是否难以迁移", "客户替换供应商的认证周期与成本"],
+    },
+    {
+      naive_reading: "法兰/排水配件亏损就应该立刻砍掉",
+      reframe: "若它能带动主力品类订单或进入高值客户清单，可能是敲门砖；否则就是利润黑洞",
+      status: "需人工核验",
+      depends_on: ["法兰线是否绑定核心客户订单", "跨品类带单金额", "停供后客户流失概率"],
+    },
+  ],
+  consistency_flags: [
+    {
+      tension: "市场维建议抓无框和高端饰面机会，但财务维显示现金跑道只有1.6个月",
+      decision: "不能直接大额投入新品扩张，必须先判断哪些机会能用现有认证、模具和客户关系低成本试点。",
+    },
+    {
+      tension: "竞争维把大客户深度绑定视为壁垒候选，但财务维把65%集中度视为风险",
+      decision: "要验证绑定是否来自高切换成本，而不是单纯低价依赖；两者对应完全不同的经营动作。",
+    },
+  ],
+  transition_to_solution: {
+    risk: "最大风险是现金流危机：1.6个月跑道让任何增长试错都变得昂贵。",
+    opportunity: "最大机会是把认证、稳定交付和定制适配转成高值品类入口，而不是继续卷低价通用件。",
+    next_step: "下一步不应先做宏大增长计划，而应先做三件事：止住亏损线失血、验证大客户壁垒是否真实、用小规模试点切入无框/高端饰面机会。",
+  },
+};
 
 function addText(slide, text, x, y, w, h, opts = {}) {
   slide.addText(text, {
@@ -734,6 +786,282 @@ function addDimensionPage(pptx, dimension) {
   addFooter(slide, `NBG五维分析 · ${dimension.label}`);
 }
 
+function addCrossCard(slide, item, index, y) {
+  addText(slide, item.fact, 0.88, y + 0.1, 2.0, 0.28, {
+    fontSize: 15,
+    bold: true,
+    color: C.goldBright,
+    align: "center",
+  });
+  slide.addShape(pptx.ShapeType.line, {
+    x: 3.1,
+    y: y + 0.26,
+    w: 1.08,
+    h: 0,
+    line: { color: C.gold, transparency: 12, width: 1.2 },
+  });
+  slide.addShape(pptx.ShapeType.line, {
+    x: 7.12,
+    y: y + 0.26,
+    w: 1.08,
+    h: 0,
+    line: { color: C.gold, transparency: 12, width: 1.2 },
+  });
+  [item.left_label, item.right_label].forEach((label, side) => {
+    const x = side === 0 ? 4.28 : 8.34;
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x,
+      y,
+      w: 3.26,
+      h: 1.3,
+      rectRadius: 0.03,
+      fill: { color: side === 0 ? C.panelGold : C.panel },
+      line: { color: side === 0 ? C.gold : C.line, transparency: 18, width: 0.8 },
+    });
+    addText(slide, label, x + 0.2, y + 0.16, 1.3, 0.14, {
+      fontSize: 7.5,
+      color: C.gold,
+      bold: true,
+    });
+    addText(slide, side === 0 ? item.left_title : item.right_title, x + 0.2, y + 0.4, 2.76, 0.32, {
+      fontSize: 10.4,
+      color: C.white,
+      bold: true,
+      fit: "shrink",
+    });
+    addText(slide, side === 0 ? item.left_detail : item.right_detail, x + 0.2, y + 0.82, 2.78, 0.32, {
+      fontSize: 7.8,
+      color: C.gray,
+      fit: "shrink",
+    });
+  });
+  addText(slide, `0${index + 1}`, 0.72, y + 0.12, 0.32, 0.16, {
+    fontSize: 8,
+    color: C.muted,
+  });
+}
+
+function addCrossResonances(pptx) {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addText(slide, "同一个事实在不同维度里，会同时是壁垒和风险", 0.62, 0.6, 9.0, 0.52, {
+    fontSize: 25,
+    bold: true,
+    color: C.white,
+    fit: "shrink",
+  });
+  addText(slide, "交叉呼应", 0.64, 1.24, 1.0, 0.2, {
+    fontSize: 8.5,
+    color: C.gold,
+  });
+  addText(slide, "这类判断不是单维分析能给出的答案，必须把竞争、模式和财务放在同一张桌上看。", 0.64, 1.5, 6.4, 0.24, {
+    fontSize: 10,
+    color: C.gray,
+  });
+  addCrossCard(slide, closingPages.cross_resonances[0], 0, 2.3);
+  addCrossCard(slide, closingPages.cross_resonances[1], 1, 4.22);
+  addFooter(slide, "NBG五维综合验证 · 交叉呼应");
+}
+
+function addReversalRow(slide, item, index, y) {
+  addText(slide, `0${index + 1}`, 0.74, y + 0.04, 0.36, 0.18, {
+    fontSize: 10,
+    bold: true,
+    color: C.gold,
+  });
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 1.18,
+    y,
+    w: 4.3,
+    h: 1.18,
+    rectRadius: 0.03,
+    fill: { color: C.panel },
+    line: { color: C.line, transparency: 16, width: 0.8 },
+  });
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 6.1,
+    y,
+    w: 4.3,
+    h: 1.18,
+    rectRadius: 0.03,
+    fill: { color: C.panelGold },
+    line: { color: C.gold, transparency: 16, width: 0.8 },
+  });
+  addText(slide, "常规读法", 1.42, y + 0.16, 0.9, 0.14, { fontSize: 7.2, color: C.muted });
+  addText(slide, item.naive_reading, 1.42, y + 0.43, 3.55, 0.34, {
+    fontSize: 12,
+    bold: true,
+    color: C.white,
+    fit: "shrink",
+  });
+  addText(slide, "反转读法", 6.34, y + 0.16, 0.9, 0.14, { fontSize: 7.2, color: C.gold });
+  addText(slide, item.reframe, 6.34, y + 0.4, 3.55, 0.38, {
+    fontSize: 11.4,
+    bold: true,
+    color: C.white,
+    fit: "shrink",
+  });
+  slide.addShape(pptx.ShapeType.line, {
+    x: 5.62,
+    y: y + 0.58,
+    w: 0.34,
+    h: 0,
+    line: { color: C.gold, width: 1.1 },
+  });
+  addText(slide, `${item.status} · 依赖：${item.depends_on.join(" / ")}`, 1.22, y + 1.34, 9.2, 0.22, {
+    fontSize: 7.5,
+    color: C.muted,
+    fit: "shrink",
+  });
+}
+
+function addConfirmedReversals(pptx) {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addText(slide, "反转不是结论，而是最值得人工核验的决策假设", 0.62, 0.6, 9.0, 0.52, {
+    fontSize: 25,
+    bold: true,
+    color: C.white,
+    fit: "shrink",
+  });
+  addText(slide, "反转与待核验", 0.64, 1.24, 1.25, 0.2, {
+    fontSize: 8.5,
+    color: C.gold,
+  });
+  addText(slide, "以下判断通过了机制检验，但失效条件依赖私有信息，必须在顾问访谈和客户数据中继续验证。", 0.64, 1.5, 6.7, 0.24, {
+    fontSize: 10,
+    color: C.gray,
+  });
+  addReversalRow(slide, closingPages.confirmed_reversals[0], 0, 2.28);
+  addReversalRow(slide, closingPages.confirmed_reversals[1], 1, 4.38);
+  addFooter(slide, "NBG五维综合验证 · 反转与待核验");
+}
+
+function addTensionCard(slide, item, index, y) {
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x: 0.82,
+    y,
+    w: 11.2,
+    h: 1.36,
+    rectRadius: 0.03,
+    fill: { color: index === 0 ? C.panelGold : C.panel },
+    line: { color: index === 0 ? C.gold : C.line, transparency: 18, width: 0.8 },
+  });
+  addText(slide, `张力 0${index + 1}`, 1.08, y + 0.18, 0.8, 0.16, {
+    fontSize: 7.4,
+    color: C.gold,
+    bold: true,
+  });
+  addText(slide, item.tension, 1.08, y + 0.45, 5.0, 0.38, {
+    fontSize: 12.2,
+    bold: true,
+    color: C.white,
+    fit: "shrink",
+  });
+  slide.addShape(pptx.ShapeType.line, {
+    x: 6.46,
+    y: y + 0.28,
+    w: 0,
+    h: 0.78,
+    line: { color: C.line, transparency: 18, width: 0.8 },
+  });
+  addText(slide, "需人工判断的取舍", 6.78, y + 0.18, 1.45, 0.16, {
+    fontSize: 7.4,
+    color: C.gold,
+    bold: true,
+  });
+  addText(slide, item.decision, 6.78, y + 0.46, 4.72, 0.36, {
+    fontSize: 10.8,
+    color: C.gray,
+    fit: "shrink",
+  });
+}
+
+function addConsistencyFlags(pptx) {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addText(slide, "最难的不是看见机会，而是在现金约束下做取舍", 0.62, 0.6, 9.2, 0.52, {
+    fontSize: 25,
+    bold: true,
+    color: C.white,
+    fit: "shrink",
+  });
+  addText(slide, "一致性张力", 0.64, 1.24, 1.1, 0.2, {
+    fontSize: 8.5,
+    color: C.gold,
+  });
+  addText(slide, "这些不是模型要替客户拍板的地方，而是需要顾问带着管理层一起做的关键判断。", 0.64, 1.5, 6.4, 0.24, {
+    fontSize: 10,
+    color: C.gray,
+  });
+  addTensionCard(slide, closingPages.consistency_flags[0], 0, 2.38);
+  addTensionCard(slide, closingPages.consistency_flags[1], 1, 4.35);
+  addFooter(slide, "NBG五维综合验证 · 一致性张力");
+}
+
+function addTransitionToSolution(pptx) {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addText(slide, "下一步不是盲目增长，而是先止血、再验证壁垒、最后小步切高值机会", 0.62, 0.62, 10.4, 0.62, {
+    fontSize: 25,
+    bold: true,
+    color: C.white,
+    fit: "shrink",
+  });
+  addText(slide, "转向解决方案", 0.64, 1.34, 1.25, 0.2, {
+    fontSize: 8.5,
+    color: C.gold,
+  });
+
+  const cards = [
+    { label: "最大风险", text: closingPages.transition_to_solution.risk },
+    { label: "最大机会", text: closingPages.transition_to_solution.opportunity },
+  ];
+  cards.forEach((card, index) => {
+    const x = index === 0 ? 0.84 : 6.72;
+    slide.addShape(pptx.ShapeType.roundRect, {
+      x,
+      y: 2.22,
+      w: 5.1,
+      h: 1.7,
+      rectRadius: 0.03,
+      fill: { color: index === 0 ? C.panel : C.panelGold },
+      line: { color: index === 0 ? C.line : C.gold, transparency: 14, width: 0.8 },
+    });
+    addText(slide, card.label, x + 0.28, 2.48, 0.9, 0.16, {
+      fontSize: 8,
+      color: C.gold,
+      bold: true,
+    });
+    addText(slide, card.text, x + 0.28, 2.86, 4.36, 0.48, {
+      fontSize: 13.2,
+      color: C.white,
+      bold: true,
+      fit: "shrink",
+    });
+  });
+
+  slide.addShape(pptx.ShapeType.line, {
+    x: 1.0,
+    y: 4.75,
+    w: 10.82,
+    h: 0,
+    line: { color: C.gold, transparency: 12, width: 1.2 },
+  });
+  addText(slide, "建议进入下一阶段", 1.0, 5.1, 1.55, 0.18, {
+    fontSize: 8.5,
+    color: C.gold,
+    bold: true,
+  });
+  addText(slide, closingPages.transition_to_solution.next_step, 1.0, 5.48, 9.85, 0.58, {
+    fontSize: 15,
+    color: C.white,
+    bold: true,
+    fit: "shrink",
+  });
+  addFooter(slide, "NBG五维综合验证 · 转向解决方案");
+}
+
 const pptx = new PptxGenJS();
 pptx.layout = "LAYOUT_WIDE";
 pptx.author = "NBG Diagnosis";
@@ -752,11 +1080,15 @@ addCover(pptx);
 addOverallJudgment(pptx);
 addThreeFindings(pptx);
 dimensions.forEach((dimension) => addDimensionPage(pptx, dimension));
+addCrossResonances(pptx);
+addConfirmedReversals(pptx);
+addConsistencyFlags(pptx);
+addTransitionToSolution(pptx);
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 pptx.writeFile({ fileName: OUT_FILE }).then(() => {
   console.log(`Generated: ${OUT_FILE}`);
-  console.log(`Slides: 8`);
+  console.log(`Slides: 12`);
   console.log(`Reviewed: ${REVIEWED}`);
   console.log(`Radar PNG: ${fs.existsSync(RADAR_FILE) ? RADAR_FILE : "matplotlib unavailable; used SVG fallback"}`);
 });
