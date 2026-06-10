@@ -3,7 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 
-from analysis import assemble_fact_base, calculate_overall_score, synthesize_diagnosis
+from analysis import (
+    assemble_fact_base,
+    calculate_overall_score,
+    run_redline_check,
+    synthesize_diagnosis,
+)
 from analysis.dimensions import (
     analyze_business_model,
     analyze_capability,
@@ -91,6 +96,11 @@ SOURCE_CORPUS_COMPETITION = [
         "source_tier": "仅线索",
     },
 ]
+
+SOURCE_CORPORA = {
+    "market": SOURCE_CORPUS_MARKET,
+    "competition": SOURCE_CORPUS_COMPETITION,
+}
 
 
 def build_yonghui_fact_base() -> dict:
@@ -238,6 +248,14 @@ def main() -> None:
         print("\n=== DEEPSEEK SYNTHESIS OUTPUT ===")
         synthesis = synthesize_diagnosis(dimension_outputs)
         print(json.dumps(synthesis, ensure_ascii=False, indent=2))
+        print("\n=== REDLINE CHECK REPORT ===")
+        report = run_redline_check(
+            dimension_outputs,
+            synthesis,
+            financial_facts=fact_base["financial_facts"],
+            source_corpora=SOURCE_CORPORA,
+        )
+        print(json.dumps(report, ensure_ascii=False, indent=2))
         return
 
     print(f"\n=== DEEPSEEK {args.dimension} OUTPUT ===")
