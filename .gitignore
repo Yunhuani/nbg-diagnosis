@@ -1,3 +1,7 @@
 __pycache__/
+**/__pycache__/
 *.pyc
 .env
+node_modules/
+report/output/
+test.png
