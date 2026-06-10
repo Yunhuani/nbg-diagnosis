@@ -7,6 +7,7 @@ from analysis import assemble_fact_base
 from analysis.dimensions import (
     analyze_business_model,
     analyze_capability,
+    analyze_competition,
     analyze_finance,
     analyze_market,
 )
@@ -48,6 +49,45 @@ SOURCE_CORPUS_MARKET = [
         "claim": "五金配件趋向暖色金属饰面,成为差异化点",
         "value": "定性趋势",
         "source_url": "heirglass.com/top-glass-shower-design-trends-2026",
+        "source_tier": "仅线索",
+    },
+]
+
+SOURCE_CORPUS_COMPETITION = [
+    {
+        "claim": "高端市场由欧美品牌(Kohler、汉斯格雅、Grohe、Moen)主导,靠工程、设计、保固、专利建立壁垒",
+        "value": "定性,高端标杆",
+        "source_url": "hansgrohe-usa.com;kohler.com",
+        "source_tier": "可信二手",
+    },
+    {
+        "claim": "中国卫浴五金分高/中/低三层:高端欧美品牌、中端国产品牌、低端国内小厂拼价格",
+        "value": "三层结构",
+        "source_url": "chyxx.com",
+        "source_tier": "可信二手",
+    },
+    {
+        "claim": "中山淋浴房占全国中高端约70%、出口约40%(雅立、玫瑰岛等)",
+        "value": "中高端70%/出口40%",
+        "source_url": "zhihu.com/p/624308443",
+        "source_tier": "仅线索",
+    },
+    {
+        "claim": "浙江淋浴房出口量额全国第一(约32%/29%),但出口均价仅为全国平均的65.9%",
+        "value": "出口第一但均价仅65.9%",
+        "source_url": "ceramicschina.com/PG_ViewNews_128452",
+        "source_tier": "可信二手",
+    },
+    {
+        "claim": "厦门是卫浴五金OEM代工核心基地(路达、瑞尔特、松霖、建霖)",
+        "value": "定性,OEM集群",
+        "source_url": "zhihu.com/p/624308443",
+        "source_tier": "仅线索",
+    },
+    {
+        "claim": "中国卫浴五金出口年增约8-10%,行业整体长期中低端",
+        "value": "出口增速8-10%",
+        "source_url": "jc001.cn",
         "source_tier": "仅线索",
     },
 ]
@@ -96,6 +136,27 @@ def build_yonghui_fact_base() -> dict:
             "expansion_intent": "中东高端工程与无框淋浴隔断配套五金",
             "demand_shift": None,
         },
+        "competition": {
+            "competitors": [
+                "浙江同省淋浴房出口同行(低价走量)",
+                "中山中高端淋浴房厂(雅立、玫瑰岛等)",
+                "欧美高端品牌(Kohler、汉斯格雅,主要在高端工程)",
+            ],
+            "customer_values": ["价格", "交付稳定性", "可定制化", "认证齐全度"],
+            "self_scores": {
+                "价格": "强(低)",
+                "交付稳定": "强",
+                "定制能力": "中",
+                "品牌": "弱",
+                "认证齐全": "强",
+            },
+            "unique_assets": [
+                "北美主要建材连锁的合格供应商认证",
+                "欧盟CE/REACH等出口认证齐全",
+                "与北美大客户7年以上合作、定制化适配经验",
+                "稳定大批量交付能力",
+            ],
+        },
         "capability": {
             "team_structure": {
                 "production": "强",
@@ -118,6 +179,8 @@ def build_yonghui_fact_base() -> dict:
                 "finance.product_lines",
                 "finance.customers",
                 "finance.ar",
+                "competition.self_scores",
+                "competition.unique_assets",
             ],
             "plus_missing": [
                 "business_model.revenue_mix",
@@ -131,6 +194,10 @@ def build_yonghui_fact_base() -> dict:
 ANALYZERS = {
     "business_model": analyze_business_model,
     "capability": analyze_capability,
+    "competition": lambda fact_base: analyze_competition(
+        fact_base,
+        SOURCE_CORPUS_COMPETITION,
+    ),
     "finance": analyze_finance,
     "market": lambda fact_base: analyze_market(fact_base, SOURCE_CORPUS_MARKET),
 }
