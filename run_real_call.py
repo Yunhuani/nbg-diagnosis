@@ -4,8 +4,53 @@ import argparse
 import json
 
 from analysis import assemble_fact_base
-from analysis.dimensions import analyze_business_model, analyze_capability, analyze_finance
+from analysis.dimensions import (
+    analyze_business_model,
+    analyze_capability,
+    analyze_finance,
+    analyze_market,
+)
 from finance import calculate_financial_facts
+
+
+SOURCE_CORPUS_MARKET = [
+    {
+        "claim": "全球淋浴隔断市场低到中个位数稳定增长",
+        "value": "约4.2% CAGR(2026-2035)",
+        "source_url": "indexbox.io/blog/shower-enclosures-market-to-2035",
+        "source_tier": "可信二手",
+    },
+    {
+        "claim": "无框淋浴隔断增速显著高于有框,是结构性升级方向",
+        "value": "无框约7.4-8% CAGR,快于整体",
+        "source_url": "verifiedmarketreports.com/product/shower-glass-door-market",
+        "source_tier": "可信二手",
+    },
+    {
+        "claim": "市场持续向高值产品迁移,无框与walk-in抢占有框份额",
+        "value": "定性趋势",
+        "source_url": "indexbox.io/blog/shower-enclosures-market-to-2035",
+        "source_tier": "可信二手",
+    },
+    {
+        "claim": "中东GCC需求集中在高端酒店、豪宅、政府基建",
+        "value": "定性,高端导向",
+        "source_url": "indexbox.io/blog/shower-enclosures-market-to-2035",
+        "source_tier": "仅线索",
+    },
+    {
+        "claim": "美国淋浴隔断市场稳定增长",
+        "value": "$3.8B(2022)→$5.15B(2028),CAGR 5.2%",
+        "source_url": "researchandmarkets.com/report/shower-enclosure",
+        "source_tier": "可信二手",
+    },
+    {
+        "claim": "五金配件趋向暖色金属饰面,成为差异化点",
+        "value": "定性趋势",
+        "source_url": "heirglass.com/top-glass-shower-design-trends-2026",
+        "source_tier": "仅线索",
+    },
+]
 
 
 def build_yonghui_fact_base() -> dict:
@@ -46,6 +91,11 @@ def build_yonghui_fact_base() -> dict:
             "how_earn_retain": "靠 OEM 代工、稳定交付和老客户复购赚钱",
             "revenue_mix": None,
         },
+        "market": {
+            "home_market": "欧美及中东",
+            "expansion_intent": "中东高端工程与无框淋浴隔断配套五金",
+            "demand_shift": None,
+        },
         "capability": {
             "team_structure": {
                 "production": "强",
@@ -82,6 +132,7 @@ ANALYZERS = {
     "business_model": analyze_business_model,
     "capability": analyze_capability,
     "finance": analyze_finance,
+    "market": lambda fact_base: analyze_market(fact_base, SOURCE_CORPUS_MARKET),
 }
 
 
