@@ -493,6 +493,6 @@ def _build_source_corpus_user_prompt(
 共享事实底座如下。财务数字均为 ground truth，不得新增、修改或重算：
 {fact_base_json}
 
-source_corpus 如下。它是市场维唯一合法外部事实来源：
+source_corpus 如下。它是本维唯一合法外部事实来源：
 {corpus_json}
 """

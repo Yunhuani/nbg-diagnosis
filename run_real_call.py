@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from analysis import assemble_fact_base
+from analysis import assemble_fact_base, calculate_overall_score, synthesize_diagnosis
 from analysis.dimensions import (
     analyze_business_model,
     analyze_capability,
@@ -202,19 +202,44 @@ ANALYZERS = {
     "market": lambda fact_base: analyze_market(fact_base, SOURCE_CORPUS_MARKET),
 }
 
+SYNTHESIS_DIMENSION_ORDER = [
+    "market",
+    "competition",
+    "business_model",
+    "capability",
+    "finance",
+]
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a real DeepSeek dimension call.")
     parser.add_argument(
         "dimension",
-        choices=sorted(ANALYZERS),
-        help="Dimension to run: business_model, capability, or finance.",
+        choices=sorted([*ANALYZERS, "synthesis"]),
+        help="Dimension to run, or synthesis to run all five dimensions then synthesize.",
     )
     args = parser.parse_args()
 
     fact_base = build_yonghui_fact_base()
     print("=== INPUT FACT BASE ===")
     print(json.dumps(fact_base, ensure_ascii=False, indent=2))
+
+    if args.dimension == "synthesis":
+        dimension_outputs = []
+        for dimension in SYNTHESIS_DIMENSION_ORDER:
+            print(f"\n=== DEEPSEEK {dimension} OUTPUT ===")
+            output = ANALYZERS[dimension](fact_base)
+            dimension_outputs.append(output)
+            print(json.dumps(output, ensure_ascii=False, indent=2))
+
+        score_summary = calculate_overall_score(dimension_outputs)
+        print("\n=== CODE-COMPUTED SCORE SUMMARY ===")
+        print(json.dumps(score_summary, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK SYNTHESIS OUTPUT ===")
+        synthesis = synthesize_diagnosis(dimension_outputs)
+        print(json.dumps(synthesis, ensure_ascii=False, indent=2))
+        return
+
     print(f"\n=== DEEPSEEK {args.dimension} OUTPUT ===")
     result = ANALYZERS[args.dimension](fact_base)
     print(json.dumps(result, ensure_ascii=False, indent=2))

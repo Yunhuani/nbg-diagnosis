@@ -6,6 +6,7 @@ from .dimensions import (
     analyze_market,
 )
 from .fact_base import assemble_fact_base
+from .synthesis import calculate_overall_score, synthesize_diagnosis
 
 __all__ = [
     "analyze_business_model",
@@ -14,4 +15,6 @@ __all__ = [
     "analyze_finance",
     "analyze_market",
     "assemble_fact_base",
+    "calculate_overall_score",
+    "synthesize_diagnosis",
 ]
