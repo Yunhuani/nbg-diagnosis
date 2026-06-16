@@ -37,9 +37,16 @@ score.label 只能填 "健康"、"亚健康"、"警告" 三者之一;score.value
 strength 只能填 "high"、"medium"、"low" 三者之一。
 degradation 必须是对象,且包含 degraded(布尔)、missing_plus(数组)、upgrade_hook(字符串)。
 reasoning_chain、evidence、open_questions 必须是数组。
+degradation.missing_plus 的语义是"本维度采集环节真正缺失的 Plus 数据字段",只能填写 availability_map.plus_missing 里实际存在、且属于本维度命名空间的字段路径(前缀必须匹配 dimension,如 business_model 维只能填 business_model.revenue_mix)。严禁填写其他维度缺失项、分析结论、能力短板、建议、机会方向等任何非数据字段。如果该维没有缺失的 Plus 数据,missing_plus 必须是空数组 []。
+reasoning_chain 是给人读的推理正文,严禁内嵌 source_url、http 链接、financial_facts. 或 diagnosis_intake. 等字段路径;引用来源一律放进 evidence.source。
+source_type 映射必须严格:computed 仅指 financial_facts 里由代码算出的数字;凡 source 指向 diagnosis_intake. 的问卷数据一律标 client_provided,不得标 computed。
+引用 full_cost_net 时必须表述为"全成本净贡献X万",说明它是净额、不是成本;禁止用"full_cost_net X vs revenue Y"或"全成本X vs收入Y"这类并列裸字段写法。
+所有维度都必须遵守产品线盈亏判定铁律:判断某产品线是否亏损,只能依据 financial_facts.product_lines[i].is_loss。is_loss=false 一律不准说成亏损、亏钱、负贡献或利润黑洞;is_loss=true 才能称为亏损线。引用产品线盈利数据时只能用 full_cost_net 的"全成本净贡献X万"表述,不得用 revenue/cost/allocated 自行推断盈亏。
+computed evidence 的 source 字段只能写纯 financial_facts 路径,不得附带"=值"、百分比解释、中文说明或字段含义;多个来源用逗号分隔,且每个都必须写完整 financial_facts 全路径,例如 "financial_facts.product_lines[3].revenue_share, financial_facts.product_lines[0].revenue_share"。
 不要输出 weakest_link、four_checks、module_pair 这类字段。你对"最脆弱环节/关键短板/财务风险"的分析,放进 core_judgment 和 reasoning_chain;反转放进 reversal_candidate;四关检验对应 reversal_candidate 里的 mechanism/falsifier 等字段。
 
 严格按此结构和类型输出(这是格式示意,内容你填):
+本次维度是 "{dimension}"。degradation.missing_plus 只能填写以 "{dimension}." 开头的本维 Plus 缺失字段；其他维度缺失项即使在 availability_map.plus_missing 里存在，也不得填入本维输出。本维无缺失时必须填 []。
 {{
   "dimension": "{dimension}",
   "framework": ["{framework}"],
@@ -207,6 +214,13 @@ FINANCE_PROMPT = f"""你正在做【财务健康度】维度。用杜邦分析 +
 - 你的职责是解读:哪个数字最致命,它意味着什么,沿 So-What 链逼出客户没意识到的结构性结论。
 - 例如:不是重新计算亏损,而是解释"你以为它保量,实际每年悄悄亏 410 万"对现金、模式和转型安全边际意味着什么。
 - 若需要 financial_facts 里没有的数字,写进 open_questions 或 evidence 的定性说明,不得自己编。
+
+【产品线盈亏判定铁律】
+- 判断某产品线是否亏损,只能依据 financial_facts.product_lines[i].is_loss 这个布尔字段。
+- is_loss=false 就是盈利,不准说成亏损;is_loss=true 才能称为亏损线。
+- 严禁自己用 revenue、direct_cost、allocated 或其他数字重新推断盈亏。
+- full_cost_net 是"全成本净贡献",已经是收入减所有成本后的净额;正数=盈利,负数=亏损。不要把 full_cost_net 误当成"成本",更不得写成"全成本600万 vs 收入3500"这类重组表达。
+- 引用任何财务数字,必须与 financial_facts 里的原值和语义一致,严禁改写、重组、虚构或把字段含义说反。
 
 【评分硬规则】
 你必须先读取 financial_facts,并在硬规则允许范围内给分:

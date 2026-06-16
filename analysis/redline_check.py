@@ -20,6 +20,13 @@ REFERENCE_FIELDS = {
 }
 NUMBER_PATTERN = re.compile(r"(?<![A-Za-z])[-+]?\$?\d+(?:\.\d+)?%?")
 NUMERIC_TOLERANCE = 0.05
+FINANCIAL_FACTS_TOP_LEVEL_FIELDS = {
+    "tier",
+    "product_lines",
+    "customer_concentration",
+    "cash_runway_months",
+    "ar",
+}
 COMPUTED_SOURCE_STYLE = (
     "Computed evidence source must be financial_facts paths using dot notation "
     "and optional [n] list indexes; multiple paths are comma-separated. "
@@ -29,20 +36,31 @@ COMPUTED_SOURCE_STYLE = (
 
 def run_redline_check(
     dimension_outputs: list[dict[str, Any]],
-    synthesis_output: dict[str, Any],
+    synthesis_output: dict[str, Any] | None,
     *,
     financial_facts: dict[str, Any],
     source_corpora: dict[str, list[dict[str, Any]]],
+    availability_map: dict[str, Any] | None = None,
+    scope: str = "full",
 ) -> dict[str, Any]:
+    if scope not in {"single", "full"}:
+        raise ValueError(f"scope must be 'single' or 'full', got {scope!r}")
+
     failures: list[dict[str, str]] = []
-    score_check = _score_check_summary(dimension_outputs, synthesis_output)
+    score_check = None if scope == "single" else _score_check_summary(dimension_outputs, synthesis_output)
     _check_brainmade_external_numbers(dimension_outputs, source_corpora, failures)
     _check_bare_numbers(dimension_outputs, failures)
+    _check_evidence_source_type_mapping(dimension_outputs, failures)
     _check_computed_financial_consistency(dimension_outputs, financial_facts, failures)
-    _check_reversal_integrity(synthesis_output, failures)
-    _check_finding_references(synthesis_output, failures)
-    _check_key_finding_counts(synthesis_output, failures)
-    _check_overall_score(dimension_outputs, synthesis_output, failures)
+    _check_product_loss_claim_consistency(dimension_outputs, financial_facts, failures)
+    _check_degradation_missing_plus(dimension_outputs, availability_map, failures)
+    _check_reasoning_chain_source_leaks(dimension_outputs, failures)
+    if scope == "full" and synthesis_output is not None:
+        _check_synthesis_headline(synthesis_output, failures)
+        _check_reversal_integrity(synthesis_output, failures)
+        _check_finding_references(synthesis_output, failures)
+        _check_key_finding_counts(synthesis_output, failures)
+        _check_overall_score(dimension_outputs, synthesis_output, failures)
     return {
         "passed": not failures,
         "score_check": score_check,
@@ -52,6 +70,27 @@ def run_redline_check(
 
 def _add_failure(failures: list[dict[str, str]], check: str, path: str, reason: str) -> None:
     failures.append({"check": check, "path": path, "reason": reason})
+
+
+def _normalize_source_url(source: Any) -> str:
+    text = str(source or "").strip()
+    markdown_link = re.fullmatch(r"\[[^\]]+\]\(([^)]+)\)", text)
+    if markdown_link:
+        text = markdown_link.group(1).strip()
+    text = re.sub(r"^https?://", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"^www\.", "", text, flags=re.IGNORECASE)
+    return text.rstrip("/")
+
+
+def _split_external_sources(source: Any) -> list[str]:
+    text = str(source or "").strip()
+    if not text:
+        return []
+    return [
+        normalized
+        for part in re.split(r"[,;]", text)
+        if (normalized := _normalize_source_url(part))
+    ]
 
 
 def _check_brainmade_external_numbers(
@@ -64,10 +103,12 @@ def _check_brainmade_external_numbers(
         if dimension not in {"market", "competition"}:
             continue
         allowed_sources = {
-            item.get("source_url")
+            _normalize_source_url(item.get("source_url"))
             for item in source_corpora.get(dimension, [])
             if item.get("source_url")
         }
+        for item in source_corpora.get(dimension, []):
+            allowed_sources.update(_split_external_sources(item.get("source_url")))
         for evidence_index, evidence in enumerate(dim.get("evidence", [])):
             source_type = evidence.get("source_type")
             if source_type not in EXTERNAL_SOURCE_TYPES:
@@ -76,7 +117,8 @@ def _check_brainmade_external_numbers(
             if not _contains_number(value):
                 continue
             source = evidence.get("source")
-            if source not in allowed_sources:
+            normalized_sources = _split_external_sources(source)
+            if not normalized_sources or any(item not in allowed_sources for item in normalized_sources):
                 _add_failure(
                     failures,
                     "brainmade_external_number",
@@ -104,6 +146,33 @@ def _check_bare_numbers(
                 )
 
 
+def _check_evidence_source_type_mapping(
+    dimension_outputs: list[dict[str, Any]],
+    failures: list[dict[str, str]],
+) -> None:
+    for dim_index, dim in enumerate(dimension_outputs):
+        for evidence_index, evidence in enumerate(dim.get("evidence", [])):
+            source_type = evidence.get("source_type")
+            source = str(evidence.get("source", ""))
+            if source_type == "computed" and not source.startswith("financial_facts"):
+                _add_failure(
+                    failures,
+                    "evidence_source_type_mapping",
+                    f"dimensions[{dim_index}].evidence[{evidence_index}].source_type",
+                    f"computed evidence must point to financial_facts, got source {source!r}",
+                )
+            if source.startswith("diagnosis_intake.") and source_type != "client_provided":
+                _add_failure(
+                    failures,
+                    "evidence_source_type_mapping",
+                    f"dimensions[{dim_index}].evidence[{evidence_index}].source_type",
+                    (
+                        "diagnosis_intake evidence must be marked client_provided, "
+                        f"got {source_type!r}"
+                    ),
+                )
+
+
 def _check_computed_financial_consistency(
     dimension_outputs: list[dict[str, Any]],
     financial_facts: dict[str, Any],
@@ -127,9 +196,13 @@ def _check_computed_financial_consistency(
                 )
                 continue
 
+            direct_values = _direct_numeric_values_for_source(financial_facts, source)
+            if direct_values is None:
+                continue
+
             mentions = _extract_numeric_mentions(str(evidence.get("value", "")))
             for mention in mentions:
-                if not any(_matches_financial_value(mention, value) for value in financial_values):
+                if not any(_matches_financial_value(mention, value) for value in direct_values):
                     _add_failure(
                         failures,
                         "computed_financial_consistency",
@@ -139,6 +212,121 @@ def _check_computed_financial_consistency(
                             f"financial_facts values referenced by {source!r}"
                         ),
                     )
+
+
+def _check_product_loss_claim_consistency(
+    dimension_outputs: list[dict[str, Any]],
+    financial_facts: dict[str, Any],
+    failures: list[dict[str, str]],
+) -> None:
+    product_lines = financial_facts.get("product_lines") or []
+    profitable_lines = [
+        line for line in product_lines
+        if line.get("is_loss") is False and str(line.get("name", "")).strip()
+    ]
+    if not profitable_lines:
+        return
+
+    for dim_index, dim in enumerate(dimension_outputs):
+        dimension = dim.get("dimension", f"#{dim_index}")
+        for path, text in _dimension_claim_texts(dim_index, dim):
+            if not _claims_loss(text):
+                continue
+            for line in profitable_lines:
+                product_name = str(line["name"])
+                if product_name in text:
+                    _add_failure(
+                        failures,
+                        "product_loss_consistency",
+                        path,
+                        (
+                            f"{dimension} claims product line {product_name!r} is loss-making, "
+                            "but financial_facts.product_lines marks is_loss=false"
+                        ),
+                    )
+
+
+def _dimension_claim_texts(dim_index: int, dim: dict[str, Any]) -> list[tuple[str, str]]:
+    texts: list[tuple[str, str]] = []
+    for chain_index, item in enumerate(dim.get("reasoning_chain", [])):
+        texts.append((f"dimensions[{dim_index}].reasoning_chain[{chain_index}]", str(item)))
+    for evidence_index, evidence in enumerate(dim.get("evidence", [])):
+        if not isinstance(evidence, dict):
+            continue
+        for field in ("claim", "value", "benchmark"):
+            texts.append((
+                f"dimensions[{dim_index}].evidence[{evidence_index}].{field}",
+                str(evidence.get(field, "")),
+            ))
+    return texts
+
+
+def _claims_loss(text: str) -> bool:
+    negated_loss_terms = ("不是亏损", "并非亏损", "不亏损", "未亏损", "没有亏损", "无亏损", "非亏损")
+    if any(term in text for term in negated_loss_terms):
+        return False
+    loss_terms = ("亏损", "亏钱", "净亏", "年亏", "亏了", "亏掉", "负贡献")
+    if any(term in text for term in loss_terms):
+        return True
+    return "亏" in text
+
+
+def _check_degradation_missing_plus(
+    dimension_outputs: list[dict[str, Any]],
+    availability_map: dict[str, Any] | None,
+    failures: list[dict[str, str]],
+) -> None:
+    if availability_map is None:
+        return
+
+    allowed = set(availability_map.get("plus_missing") or [])
+    for dim_index, dim in enumerate(dimension_outputs):
+        dimension = dim.get("dimension", f"#{dim_index}")
+        missing_plus = dim.get("degradation", {}).get("missing_plus", [])
+        if not isinstance(missing_plus, list):
+            continue
+        for item_index, item in enumerate(missing_plus):
+            if item not in allowed:
+                _add_failure(
+                    failures,
+                    "degradation_missing_plus",
+                    f"dimensions[{dim_index}].degradation.missing_plus[{item_index}]",
+                    (
+                        f"{dimension} degradation.missing_plus item {item!r} is not in "
+                        "availability_map.plus_missing"
+                    ),
+                )
+                continue
+            expected_prefix = f"{dimension}."
+            if isinstance(dimension, str) and not str(item).startswith(expected_prefix):
+                _add_failure(
+                    failures,
+                    "degradation_missing_plus",
+                    f"dimensions[{dim_index}].degradation.missing_plus[{item_index}]",
+                    (
+                        f"{dimension} degradation.missing_plus item {item!r} belongs to another "
+                        f"dimension; expected prefix {expected_prefix!r}"
+                    ),
+                )
+
+
+def _check_reasoning_chain_source_leaks(
+    dimension_outputs: list[dict[str, Any]],
+    failures: list[dict[str, str]],
+) -> None:
+    leak_markers = ("source_url", "http://", "https://", "financial_facts.", "diagnosis_intake.")
+    for dim_index, dim in enumerate(dimension_outputs):
+        for chain_index, item in enumerate(dim.get("reasoning_chain", [])):
+            text = str(item)
+            marker = next((marker for marker in leak_markers if marker in text), None)
+            if marker is None:
+                continue
+            _add_failure(
+                failures,
+                "reasoning_chain_source_leak",
+                f"dimensions[{dim_index}].reasoning_chain[{chain_index}]",
+                f"reasoning_chain must not embed source/link/path marker {marker!r}",
+            )
 
 
 def _check_reversal_integrity(
@@ -161,6 +349,44 @@ def _check_reversal_integrity(
                 f"synthesis.confirmed_reversals[{index}].status",
                 "confirmed reversal status must not be machine_confirmed when private-info falsifier checks are required",
             )
+
+
+def _check_synthesis_headline(
+    synthesis_output: dict[str, Any],
+    failures: list[dict[str, str]],
+) -> None:
+    headline = synthesis_output.get("headline")
+    if not isinstance(headline, str):
+        _add_failure(
+            failures,
+            "synthesis_headline",
+            "synthesis.headline",
+            f"headline must be a string, got {type(headline).__name__}",
+        )
+        return
+    stripped = headline.strip()
+    if not stripped:
+        _add_failure(
+            failures,
+            "synthesis_headline",
+            "synthesis.headline",
+            "headline must be non-empty",
+        )
+        return
+    if "\n" in stripped or "\r" in stripped:
+        _add_failure(
+            failures,
+            "synthesis_headline",
+            "synthesis.headline",
+            "headline must be a single line",
+        )
+    if len(stripped) > 30:
+        _add_failure(
+            failures,
+            "synthesis_headline",
+            "synthesis.headline",
+            f"headline must be 30 characters or fewer, got {len(stripped)}",
+        )
 
 
 def _check_finding_references(
@@ -257,7 +483,7 @@ def _check_overall_score(
 
 def _score_check_summary(
     dimension_outputs: list[dict[str, Any]],
-    synthesis_output: dict[str, Any],
+    synthesis_output: dict[str, Any] | None,
 ) -> dict[str, Any]:
     expected = calculate_overall_score(dimension_outputs)
     return {
@@ -267,8 +493,8 @@ def _score_check_summary(
         },
         "computed_overall_score": expected["overall_score"],
         "computed_score_label": expected["score_label"],
-        "synthesis_overall_score": synthesis_output.get("overall_score"),
-        "synthesis_score_label": synthesis_output.get("score_label"),
+        "synthesis_overall_score": None if synthesis_output is None else synthesis_output.get("overall_score"),
+        "synthesis_score_label": None if synthesis_output is None else synthesis_output.get("score_label"),
     }
 
 
@@ -311,16 +537,41 @@ def _financial_values_for_source(
     return values
 
 
+def _direct_numeric_values_for_source(
+    financial_facts: dict[str, Any],
+    source: str,
+) -> list[float] | None:
+    paths = _expand_financial_source_paths(source)
+    if len(paths) != 1:
+        return None
+    target = _resolve_financial_path(financial_facts, paths[0])
+    if isinstance(target, bool) or target is None:
+        return None
+    if isinstance(target, (int, float)):
+        return [float(target)]
+    if paths[0] == "financial_facts":
+        return []
+    return None
+
+
 def _expand_financial_source_paths(source: str) -> list[str]:
     expanded: list[str] = []
     current_parent = ""
-    for raw_path in source.split(","):
-        path = raw_path.strip()
+    for raw_path in re.split(r"[,;]", source):
+        path = raw_path.split("=", 1)[0].strip()
         if not path:
+            continue
+        if path.startswith("diagnosis_intake."):
             continue
         if path == "financial_facts" or path.startswith("financial_facts."):
             expanded.append(path)
             current_parent = _parent_path(path)
+            continue
+        first_part = path.split(".", 1)[0].split("[", 1)[0]
+        if first_part in FINANCIAL_FACTS_TOP_LEVEL_FIELDS:
+            expanded_path = f"financial_facts.{path}"
+            expanded.append(expanded_path)
+            current_parent = _parent_path(expanded_path)
             continue
         if current_parent:
             expanded.append(f"{current_parent}.{path}")

@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NBG增长解码 · 泽思AI 原型</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap");
+
+    :root {
+      --bg: #0E0F12;
+      --surface: #16181D;
+      --border: rgba(255,255,255,0.08);
+      --paper: #F6F4EE;
+      --paper-text: #1A1B1E;
+      --gold: #C9A24B;
+      --text: #F4F2EC;
+      --muted: #9A988F;
+      --paper-muted: #69665D;
+      --radius: 16px;
+      --font-cn: "PingFang SC","Microsoft YaHei",sans-serif;
+      --font-num: "Inter","PingFang SC","Microsoft YaHei",sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-cn);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button, a, input, select, textarea { outline-color: var(--gold); outline-offset: 3px; }
+    button { cursor: pointer; }
+
+    .app {
+      min-height: 100vh;
+      padding-bottom: 82px;
+    }
+
+    .screen { display: none; min-height: 100vh; }
+    .screen.active { display: block; animation: enter 420ms ease both; }
+
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .dark { background: var(--bg); color: var(--text); }
+    .light { background: var(--paper); color: var(--paper-text); }
+    .container {
+      width: min(1160px, calc(100vw - 40px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      background: rgba(14,15,18,0.76);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar.lightbar {
+      background: rgba(246,244,238,0.82);
+      border-bottom: 1px solid rgba(26,27,30,0.08);
+    }
+
+    .nav {
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: inherit;
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--gold);
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      font-family: var(--font-num);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .prototype-badge {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 7px 11px;
+      letter-spacing: 0.04em;
+    }
+
+    .light .prototype-badge {
+      border-color: rgba(26,27,30,0.12);
+      color: var(--paper-muted);
+    }
+
+    .hero {
+      padding: 72px 0 86px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 52px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      margin-bottom: 18px;
+    }
+
+    h1, h2, h3, p { margin: 0; }
+    h1 {
+      font-size: clamp(48px, 6vw, 78px);
+      line-height: 0.96;
+      letter-spacing: -0.055em;
+      max-width: 760px;
+    }
+
+    .lead {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 19px;
+      line-height: 1.75;
+      max-width: 610px;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 13px 20px;
+      background: transparent;
+      color: inherit;
+      font-weight: 750;
+      min-height: 48px;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: var(--gold);
+      color: #11110F;
+      border-color: var(--gold);
+    }
+    .btn-ghost {
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .light .btn-ghost {
+      border-color: rgba(26,27,30,0.14);
+      color: var(--paper-text);
+    }
+
+    .radar-shell {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      background: var(--surface);
+      padding: 28px;
+      min-height: 470px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+
+    .radar-caption {
+      position: absolute;
+      left: 28px;
+      top: 26px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .radar-score {
+      position: absolute;
+      right: 28px;
+      top: 24px;
+      font-family: var(--font-num);
+      color: var(--gold);
+      font-weight: 800;
+      font-size: 30px;
+      letter-spacing: -0.04em;
+    }
+
+    .radar {
+      width: min(360px, 80vw);
+      height: auto;
+      overflow: visible;
+    }
+
+    .radar .grid { fill: none; stroke: rgba(255,255,255,0.13); stroke-width: 1; }
+    .radar .axis { stroke: rgba(255,255,255,0.10); stroke-width: 1; }
+    .radar .shape { fill: rgba(201,162,75,0.16); stroke: var(--gold); stroke-width: 2.2; stroke-linejoin: round; }
+    .radar .dot { fill: var(--gold); }
+    .radar text {
+      fill: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+      font-family: var(--font-cn);
+    }
+
+    .section { padding: 88px 0; }
+    .section.light { background: var(--paper); color: var(--paper-text); }
+    .section.dark { background: var(--bg); color: var(--text); }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 40px;
+      align-items: end;
+      margin-bottom: 36px;
+    }
+
+    .section-title {
+      font-size: clamp(32px, 4vw, 52px);
+      line-height: 1.06;
+      letter-spacing: -0.045em;
+      max-width: 720px;
+    }
+
+    .section-note {
+      color: inherit;
+      opacity: 0.62;
+      max-width: 360px;
+      line-height: 1.7;
+      font-size: 15px;
+    }
+
+    .framework {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 34px;
+      align-items: center;
+    }
+
+    .dimension-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .dimension-item {
+      border: 1px solid rgba(26,27,30,0.10);
+      border-radius: 14px;
+      padding: 18px 20px;
+      background: rgba(255,255,255,0.40);
+      display: grid;
+      grid-template-columns: 112px 1fr;
+      gap: 18px;
+      align-items: baseline;
+    }
+
+    .dimension-item strong { color: var(--paper-text); font-size: 17px; }
+    .dimension-item span { color: var(--paper-muted); line-height: 1.55; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .step-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 24px;
+      min-height: 182px;
+    }
+
+    .step-num {
+      font-family: var(--font-num);
+      color: var(--gold);
+      font-weight: 800;
+      margin-bottom: 28px;
+    }
+
+    .step-card h3 { font-size: 20px; margin-bottom: 12px; }
+    .step-card p { color: var(--muted); line-height: 1.7; font-size: 14px; }
+
+    .trust {
+      margin-top: 28px;
+      border-top: 1px solid var(--border);
+      padding-top: 22px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      font-size: 14px;
+    }
+
+    .questionnaire {
+      padding: 42px 0 70px;
+    }
+
+    .form-shell {
+      border: 1px solid rgba(26,27,30,0.10);
+      border-radius: 22px;
+      background: rgba(255,255,255,0.48);
+      padding: 30px;
+    }
+
+    .progress {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .progress button {
+      border: 1px solid rgba(26,27,30,0.10);
+      border-radius: 14px;
+      background: transparent;
+      color: var(--paper-muted);
+      padding: 14px;
+      text-align: left;
+      font-weight: 700;
+    }
+
+    .progress button.active {
+      border-color: var(--gold);
+      color: var(--paper-text);
+      background: rgba(201,162,75,0.12);
+    }
+
+    .form-step { display: none; }
+    .form-step.active { display: block; animation: enter 240ms ease both; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .field { display: grid; gap: 8px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label {
+      font-size: 13px;
+      color: var(--paper-muted);
+      font-weight: 700;
+    }
+
+    .input {
+      width: 100%;
+      border: 1px solid rgba(26,27,30,0.12);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--paper-text);
+      padding: 14px 15px;
+      min-height: 50px;
+    }
+
+    textarea.input { min-height: 102px; resize: vertical; }
+
+    .upload-box {
+      border: 1px dashed rgba(26,27,30,0.24);
+      border-radius: 16px;
+      padding: 26px;
+      background: rgba(255,255,255,0.44);
+    }
+
+    .upload-box strong { display: block; margin-bottom: 8px; }
+    .upload-box p { color: var(--paper-muted); line-height: 1.7; }
+
+    .form-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .helper { color: var(--paper-muted); font-size: 13px; }
+
+    .loading-wrap {
+      min-height: calc(100vh - 68px);
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 60px 20px;
+    }
+
+    .loader {
+      width: 114px;
+      height: 114px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      position: relative;
+      margin: 0 auto 34px;
+    }
+
+    .loader::before, .loader::after {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--gold);
+      animation: spin 1.2s linear infinite;
+    }
+
+    .loader::after {
+      inset: 34px;
+      animation-duration: 1.8s;
+      opacity: 0.6;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-title {
+      font-size: clamp(32px, 5vw, 54px);
+      letter-spacing: -0.045em;
+      margin-bottom: 18px;
+    }
+
+    .loading-line {
+      color: var(--gold);
+      font-size: 18px;
+      min-height: 32px;
+    }
+
+    .result-hero {
+      padding: 54px 0 42px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 42px;
+      align-items: center;
+    }
+
+    .rating {
+      display: inline-flex;
+      border: 1px solid var(--gold);
+      border-radius: 999px;
+      color: var(--gold);
+      padding: 8px 13px;
+      font-weight: 800;
+      font-family: var(--font-num);
+      margin-bottom: 20px;
+    }
+
+    .result-title {
+      font-size: clamp(38px, 5.2vw, 68px);
+      line-height: 1;
+      letter-spacing: -0.055em;
+      max-width: 760px;
+    }
+
+    .findings {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin: 40px 0 58px;
+    }
+
+    .finding-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      padding: 24px;
+      min-height: 238px;
+    }
+
+    .finding-card.featured {
+      border-color: var(--gold);
+      background: rgba(201,162,75,0.08);
+    }
+
+    .metric {
+      font-family: var(--font-num);
+      color: var(--gold);
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: -0.045em;
+      margin-bottom: 24px;
+    }
+
+    .finding-card h3 {
+      font-size: 20px;
+      line-height: 1.3;
+      margin-bottom: 14px;
+    }
+
+    .finding-card p {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 14px;
+    }
+
+    .score-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .score-pill {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      background: var(--surface);
+    }
+
+    .score-pill span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .score-pill strong {
+      font-family: var(--font-num);
+      color: var(--gold);
+      font-size: 22px;
+    }
+
+    .cross-insight {
+      border: 1px solid var(--gold);
+      border-radius: 20px;
+      background: rgba(201,162,75,0.08);
+      padding: 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 28px;
+      margin-bottom: 72px;
+    }
+
+    .cross-insight h3 {
+      grid-column: 1 / -1;
+      font-size: 26px;
+      letter-spacing: -0.03em;
+    }
+
+    .interpretation {
+      border-top: 1px solid var(--border);
+      padding-top: 18px;
+    }
+
+    .interpretation small {
+      display: block;
+      color: var(--gold);
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .interpretation p {
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .closing {
+      padding: 72px 0 92px;
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 44px;
+      align-items: start;
+    }
+
+    .closing h2 {
+      font-size: clamp(38px, 5vw, 64px);
+      line-height: 1.02;
+      letter-spacing: -0.05em;
+    }
+
+    .download-actions {
+      display: grid;
+      gap: 16px;
+    }
+
+    .action-card {
+      border: 1px solid rgba(26,27,30,0.10);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.50);
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: center;
+    }
+
+    .action-card h3 { font-size: 22px; margin-bottom: 8px; }
+    .action-card p { color: var(--paper-muted); line-height: 1.6; }
+
+    .demo-nav {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      z-index: 50;
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(14,15,18,0.84);
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 48px rgba(0,0,0,0.28);
+    }
+
+    .demo-nav button {
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 12px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .demo-nav button.active {
+      background: var(--gold);
+      color: #11110F;
+      font-weight: 800;
+    }
+
+    @media (max-width: 900px) {
+      .hero, .framework, .result-hero, .closing, .cross-insight {
+        grid-template-columns: 1fr;
+      }
+      .steps, .findings, .score-row {
+        grid-template-columns: 1fr;
+      }
+      .section-head {
+        display: block;
+      }
+      .section-note {
+        margin-top: 16px;
+      }
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+      .progress {
+        grid-template-columns: 1fr;
+      }
+      .action-card {
+        grid-template-columns: 1fr;
+      }
+      .demo-nav {
+        width: calc(100vw - 22px);
+        overflow-x: auto;
+        justify-content: flex-start;
+      }
+      h1 { font-size: 48px; }
+      .radar-shell { min-height: 390px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 1ms !important;
+        transition-duration: 1ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="screen dark active" data-screen="landing">
+      <header class="topbar">
+        <div class="container nav">
+          <div class="brand"><span class="mark">NBG</span><span>NBG增长解码 · 泽思AI</span></div>
+          <span class="prototype-badge">原型演示</span>
+        </div>
+      </header>
+
+      <div class="container hero">
+        <div>
+          <div class="eyebrow">给中小企业主的增长体检</div>
+          <h1>30分钟，看清你公司增长卡在哪一环</h1>
+          <p class="lead">不用先写厚厚的咨询材料。你只要填经营信息和关键财务数据，系统会把增长机会、竞争位置、商业模式、内部能力和财务健康放在一张图里看清楚。</p>
+          <div class="hero-actions">
+            <button class="btn btn-primary" data-go="questionnaire">开始诊断</button>
+            <button class="btn btn-ghost" data-go="results">查看甬辉样例</button>
+          </div>
+        </div>
+        <div class="radar-shell">
+          <span class="radar-caption">五维增长体检</span>
+          <span class="radar-score">3.8</span>
+          <div data-radar></div>
+        </div>
+      </div>
+
+      <section class="section light">
+        <div class="container framework">
+          <div>
+            <div class="eyebrow">五维框架</div>
+            <h2 class="section-title">不是只看销售额，而是看增长系统哪里失衡</h2>
+          </div>
+          <div class="dimension-list">
+            <div class="dimension-item"><strong>市场</strong><span>机会是不是还值得追，窗口期在哪里。</span></div>
+            <div class="dimension-item"><strong>竞争</strong><span>你靠什么赢，低价、交付、认证还是客户绑定。</span></div>
+            <div class="dimension-item"><strong>商业模式</strong><span>赚钱逻辑是否可持续，是否在用好产品补贴坏结构。</span></div>
+            <div class="dimension-item"><strong>内部能力</strong><span>团队和资源能不能撑住下一阶段增长。</span></div>
+            <div class="dimension-item"><strong>财务</strong><span>现金、利润和回款有没有把增长空间压扁。</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section dark">
+        <div class="container">
+          <div class="section-head">
+            <h2 class="section-title">三步拿到一份能开会讨论的诊断</h2>
+            <p class="section-note">先快速看清问题，再决定是否进入顾问深度拆解。</p>
+          </div>
+          <div class="steps">
+            <article class="step-card"><div class="step-num">01</div><h3>填写经营信息</h3><p>行业、客户、产品线、团队能力和关键焦虑，先把事实底座搭起来。</p></article>
+            <article class="step-card"><div class="step-num">02</div><h3>看清五个维度</h3><p>把机会、竞争、模式、能力和财务放到一起看，避免只凭直觉拍板。</p></article>
+            <article class="step-card"><div class="step-num">03</div><h3>顾问审核出报告</h3><p>系统给出初版判断，顾问核验关键假设后形成可讨论的诊断报告。</p></article>
+          </div>
+          <div class="trust"><span>基于NBG增长方法论</span><span>财务数字由代码测算，不让模型编数字</span><span>适合制造、外贸、渠道型中小企业</span></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="screen light" data-screen="questionnaire">
+      <header class="topbar lightbar">
+        <div class="container nav">
+          <div class="brand"><span class="mark">NBG</span><span>开始诊断</span></div>
+          <span class="prototype-badge">原型演示</span>
+        </div>
+      </header>
+      <div class="container questionnaire">
+        <div class="section-head">
+          <h1 class="section-title">先填最关键的信息，不用一次讲完公司全部故事</h1>
+          <p class="section-note">财务数据可以先不上传；提供后可以解锁精确量化诊断。</p>
+        </div>
+        <div class="form-shell">
+          <div class="progress" role="tablist" aria-label="诊断问卷步骤">
+            <button class="active" data-form-step="0">① 企业基础</button>
+            <button data-form-step="1">② 商业模式与竞争</button>
+            <button data-form-step="2">③ 财务数据</button>
+          </div>
+          <form>
+            <div class="form-step active">
+              <div class="form-grid">
+                <label class="field"><span>企业名称</span><input class="input" value="甬辉" /></label>
+                <label class="field"><span>行业</span><input class="input" value="卫浴五金出口制造" /></label>
+                <label class="field"><span>营收区间</span><select class="input"><option>1-3亿元</option><option>3000万-1亿元</option></select></label>
+                <label class="field"><span>团队规模</span><select class="input"><option>100-300人</option><option>50-100人</option></select></label>
+                <label class="field full"><span>现在最焦虑什么</span><textarea class="input">订单还有，但利润变薄、现金紧张，不确定下一步该扩品类还是先止血。</textarea></label>
+              </div>
+            </div>
+            <div class="form-step">
+              <div class="form-grid">
+                <label class="field"><span>主营产品</span><input class="input" value="淋浴隔断五金、法兰/排水配件、浴室置物架" /></label>
+                <label class="field"><span>怎么赚钱</span><input class="input" value="OEM代工 + 大客户长期供货" /></label>
+                <label class="field"><span>主要对手</span><input class="input" value="浙江低价出口同行、中山中高端淋浴房厂、欧美高端品牌" /></label>
+                <label class="field"><span>客户最看重什么</span><input class="input" value="价格、交付稳定、可定制、认证齐全" /></label>
+                <label class="field full"><span>你认为自己的优势</span><textarea class="input">北美建材连锁合格供应商认证，出口认证齐全，和北美大客户合作多年，交付稳定。</textarea></label>
+              </div>
+            </div>
+            <div class="form-step">
+              <div class="form-grid">
+                <label class="field"><span>账上现金</span><input class="input" value="1180万" /></label>
+                <label class="field"><span>月度刚性支出</span><input class="input" value="720万" /></label>
+                <label class="field"><span>应收余额</span><input class="input" value="4960万" /></label>
+                <label class="field"><span>当前账期</span><input class="input" value="97天" /></label>
+                <div class="field full upload-box">
+                  <strong>可选上传：财务明细、产品线收入成本、客户回款表</strong>
+                  <p>提供财务数据可解锁精确量化诊断，例如现金跑道、全成本净贡献、应收可释放空间。</p>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <span class="helper">演示数据已填好，可以直接生成甬辉样例。</span>
+              <div>
+                <button type="button" class="btn btn-ghost" data-prev-step>上一步</button>
+                <button type="button" class="btn btn-primary" data-next-step>下一步</button>
+                <button type="button" class="btn btn-primary" data-go="loading">生成诊断</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen dark" data-screen="loading">
+      <header class="topbar">
+        <div class="container nav">
+          <div class="brand"><span class="mark">NBG</span><span>正在生成诊断</span></div>
+          <span class="prototype-badge">原型演示</span>
+        </div>
+      </header>
+      <div class="loading-wrap">
+        <div>
+          <div class="loader" aria-hidden="true"></div>
+          <h1 class="loading-title">正在把经营事实连成判断</h1>
+          <p class="loading-line" data-loading-text>正在测算财务健康度…</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen dark" data-screen="results">
+      <header class="topbar">
+        <div class="container nav">
+          <div class="brand"><span class="mark">NBG</span><span>甬辉诊断结果</span></div>
+          <span class="prototype-badge">原型演示</span>
+        </div>
+      </header>
+      <div class="container result-hero">
+        <div>
+          <div class="rating">警告 · 3.8分</div>
+          <h1 class="result-title">现金压力已经压过增长机会，甬辉必须先止住失血</h1>
+          <p class="lead">外部机会仍在，但模式、能力和财务同时承压。下一步不是盲目扩张，而是先确认哪些壁垒真实、哪些产品线必须取舍。</p>
+        </div>
+        <div class="radar-shell">
+          <span class="radar-caption">五维评分</span>
+          <span class="radar-score">4/4/4/4/3</span>
+          <div data-radar></div>
+        </div>
+      </div>
+
+      <div class="container">
+        <div class="findings">
+          <article class="finding-card"><div class="metric">1.6个月</div><h3>现金跑道已经太短，增长试错空间被压扁</h3><p>订单不少不等于现金安全。真正限制转身速度的，是账上现金承受不了持续试错。</p></article>
+          <article class="finding-card featured"><div class="metric">-410万</div><h3>法兰/排水配件正在吞噬利润</h3><p>看似补齐品类、稳住客户，实际可能是在用赚钱产品给亏损线输血。</p></article>
+          <article class="finding-card"><div class="metric">65%</div><h3>客户集中不只是软肋，也可能是壁垒</h3><p>如果认证、适配和长期合作真的形成切换成本，这个风险也可能变成进入门槛。</p></article>
+        </div>
+
+        <div class="score-row">
+          <div class="score-pill"><span>市场</span><strong>4/10</strong></div>
+          <div class="score-pill"><span>竞争</span><strong>4/10</strong></div>
+          <div class="score-pill"><span>商业模式</span><strong>4/10</strong></div>
+          <div class="score-pill"><span>内部能力</span><strong>4/10</strong></div>
+          <div class="score-pill"><span>财务</span><strong>3/10</strong></div>
+        </div>
+
+        <section class="cross-insight">
+          <h3>同一个65%，在财务上是风险，在竞争上可能是壁垒</h3>
+          <div class="interpretation"><small>财务视角</small><p>前三大客户占65%，一旦大客户压价、延迟回款或调整采购节奏，1.6个月现金跑道会被迅速击穿。</p></div>
+          <div class="interpretation"><small>竞争视角</small><p>如果大客户合作依赖认证、定制适配和稳定交付，这种集中也可能代表高切换成本。</p></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="screen light" data-screen="download">
+      <header class="topbar lightbar">
+        <div class="container nav">
+          <div class="brand"><span class="mark">NBG</span><span>下一步</span></div>
+          <span class="prototype-badge">原型演示</span>
+        </div>
+      </header>
+      <div class="container closing">
+        <div>
+          <div class="eyebrow">把诊断变成行动</div>
+          <h2>先止血，再验证壁垒，最后小步切高值机会</h2>
+          <p class="lead" style="color:var(--paper-muted)">这份诊断不是为了证明问题复杂，而是为了让老板和管理层能在同一张图上讨论取舍。</p>
+        </div>
+        <div class="download-actions">
+          <article class="action-card">
+            <div><h3>下载完整12页报告</h3><p>包含封面、总体判断、三大关键发现、五维详情、交叉洞察和转向方案。</p></div>
+            <button class="btn btn-primary">下载PDF</button>
+          </article>
+          <article class="action-card">
+            <div><h3>预约顾问1对1解读</h3><p>把“65%到底是壁垒还是风险”“法兰线该不该砍”这类关键假设讲透。</p></div>
+            <button class="btn btn-primary">预约解读</button>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="demo-nav" aria-label="演示导航">
+    <button class="active" data-go="landing">落地页</button>
+    <button data-go="questionnaire">诊断问卷</button>
+    <button data-go="loading">生成中</button>
+    <button data-go="results">结果页</button>
+    <button data-go="download">下载预约</button>
+  </nav>
+
+  <script>
+    const screens = Array.from(document.querySelectorAll(".screen"));
+    const navButtons = Array.from(document.querySelectorAll("[data-go]"));
+    const loadingTexts = ["正在测算财务健康度…", "正在做五维交叉验证…", "正在校验数据红线…", "正在生成12页诊断报告…"];
+    let loadingTimer = null;
+    let loadingTextTimer = null;
+
+    function radarSvg() {
+      const labels = [
+        { name: "市场", value: 4 },
+        { name: "竞争", value: 4 },
+        { name: "商业模式", value: 4 },
+        { name: "内部能力", value: 4 },
+        { name: "财务", value: 3 }
+      ];
+      const cx = 220, cy = 220, r = 138;
+      const point = (i, scale = 1) => {
+        const angle = -Math.PI / 2 + i * Math.PI * 2 / labels.length;
+        return [cx + Math.cos(angle) * r * scale, cy + Math.sin(angle) * r * scale];
+      };
+      const pts = labels.map((d, i) => point(i, d.value / 5).map(n => n.toFixed(1)).join(",")).join(" ");
+      const rings = [1,2,3,4,5].map(t => `<polygon class="grid" points="${labels.map((_, i) => point(i, t / 5).map(n => n.toFixed(1)).join(",")).join(" ")}"></polygon>`).join("");
+      const axes = labels.map((_, i) => {
+        const [x, y] = point(i, 1);
+        return `<line class="axis" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"></line>`;
+      }).join("");
+      const dots = labels.map((d, i) => {
+        const [x, y] = point(i, d.value / 5);
+        return `<circle class="dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4"></circle>`;
+      }).join("");
+      const text = labels.map((d, i) => {
+        const [x, y] = point(i, 1.22);
+        return `<text x="${x.toFixed(1)}" y="${(y + 5).toFixed(1)}" text-anchor="middle">${d.name}</text>`;
+      }).join("");
+      return `<svg class="radar" viewBox="0 0 440 440" role="img" aria-label="五维雷达图">${rings}${axes}<polygon class="shape" points="${pts}"></polygon>${dots}${text}</svg>`;
+    }
+
+    function renderRadars() {
+      document.querySelectorAll("[data-radar]").forEach(node => {
+        node.innerHTML = radarSvg();
+      });
+    }
+
+    function showScreen(name) {
+      screens.forEach(screen => screen.classList.toggle("active", screen.dataset.screen === name));
+      document.querySelectorAll(".demo-nav [data-go]").forEach(btn => btn.classList.toggle("active", btn.dataset.go === name));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+
+      clearTimeout(loadingTimer);
+      clearInterval(loadingTextTimer);
+      if (name === "loading") startLoading();
+    }
+
+    function startLoading() {
+      const target = document.querySelector("[data-loading-text]");
+      let index = 0;
+      target.textContent = loadingTexts[index];
+      loadingTextTimer = setInterval(() => {
+        index = (index + 1) % loadingTexts.length;
+        target.textContent = loadingTexts[index];
+      }, 720);
+      loadingTimer = setTimeout(() => showScreen("results"), 2500);
+    }
+
+    let formStep = 0;
+    const formSteps = Array.from(document.querySelectorAll(".form-step"));
+    const stepButtons = Array.from(document.querySelectorAll("[data-form-step]"));
+
+    function setFormStep(next) {
+      formStep = Math.max(0, Math.min(formSteps.length - 1, next));
+      formSteps.forEach((step, i) => step.classList.toggle("active", i === formStep));
+      stepButtons.forEach((button, i) => button.classList.toggle("active", i === formStep));
+    }
+
+    navButtons.forEach(button => button.addEventListener("click", () => showScreen(button.dataset.go)));
+    stepButtons.forEach(button => button.addEventListener("click", () => setFormStep(Number(button.dataset.formStep))));
+    document.querySelector("[data-next-step]").addEventListener("click", () => setFormStep(formStep + 1));
+    document.querySelector("[data-prev-step]").addEventListener("click", () => setFormStep(formStep - 1));
+
+    renderRadars();
+  </script>
+</body>
+</html>

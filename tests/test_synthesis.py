@@ -77,6 +77,7 @@ def test_synthesis_returns_schema_and_references_findings_ids():
                     "quant_value": "65%",
                 },
             ],
+            "headline": "外部尚可内部承压",
             "overall_judgment": "甬辉不是没有市场机会,而是外部窗口尚可、内部模式和财务承压",
             "overall_score": score_summary["overall_score"],
             "score_label": score_summary["score_label"],
@@ -118,4 +119,5 @@ def test_synthesis_returns_schema_and_references_findings_ids():
 
     assert result["overall_score"] == 4.8
     assert result["score_label"] == "警告"
+    assert result["headline"] == "外部尚可内部承压"
     assert result["three_key_findings"][0]["finding_id"] in finding_ids

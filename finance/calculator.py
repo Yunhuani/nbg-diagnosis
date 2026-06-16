@@ -67,7 +67,7 @@ def _calculate_customer_concentration(
     named_customer_pcts = [
         float(customer["pct"])
         for customer in customers
-        if str(customer["name"]) not in {"散客", "其他", "其他客户", "零散客户"}
+        if str(customer["name"]) not in {"散客", "C端散客", "其他", "其他客户", "零散客户"}
     ]
     sorted_pcts = sorted(named_customer_pcts, reverse=True)
     return {
@@ -81,7 +81,10 @@ def _calculate_ar(ar_balance: float | None, ar_days: float | None) -> dict[str, 
     if ar_balance is None or ar_days is None:
         return None
 
-    releasable = float(ar_balance) * (float(ar_days) - 60) / float(ar_days)
+    if float(ar_days) <= 60:
+        releasable = 0
+    else:
+        releasable = float(ar_balance) * (float(ar_days) - 60) / float(ar_days)
     return {
         "balance": float(ar_balance),
         "days": float(ar_days),
