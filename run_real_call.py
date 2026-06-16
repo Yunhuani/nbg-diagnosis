@@ -20,6 +20,7 @@ from analysis.dimensions import (
     analyze_market,
 )
 from finance import calculate_financial_facts
+from solution import generate_strategic_thesis
 
 
 SOURCE_CORPUS_MARKET = [
@@ -579,7 +580,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run a real DeepSeek dimension call.")
     parser.add_argument(
         "dimension",
-        choices=sorted([*ANALYZERS, "synthesis", "offline_subset", "report"]),
+        choices=sorted([*ANALYZERS, "synthesis", "offline_subset", "report", "thesis"]),
         help="Dimension to run, or synthesis to run all five dimensions then synthesize.",
     )
     parser.add_argument(
@@ -629,6 +630,14 @@ def main() -> None:
             score_summary=score_summary,
         )
         print(f"\n=== REPORT FILE ===\n{output_file.resolve()}")
+        return
+
+    if args.dimension == "thesis":
+        dimension_outputs, synthesis, _score_summary = run_full_synthesis_flow(fact_base, args.case)
+        print_redline_report(dimension_outputs, synthesis, fact_base, source_corpora, scope="full")
+        print("\n=== DEEPSEEK STRATEGIC THESIS OUTPUT ===")
+        thesis = generate_strategic_thesis(synthesis, dimension_outputs)
+        print(json.dumps(thesis, ensure_ascii=False, indent=2))
         return
 
     print(f"\n=== DEEPSEEK {args.dimension} OUTPUT ===")
