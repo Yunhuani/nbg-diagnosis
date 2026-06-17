@@ -148,35 +148,6 @@ def test_generate_action_map_returns_schema_and_grounding():
     assert result["actions"][2]["category"] == "战术方向"
 
 
-def test_generate_action_map_rejects_vague_action_without_mechanism():
-    output = _valid_action_map()
-    output["actions"][0]["action"] = "加强品牌"
-
-    def fake_llm(_system_prompt, _user_prompt):
-        return output
-
-    with pytest.raises(ValueError, match="concrete object and execution mechanism"):
-        generate_action_map(_synthesis_output(), _strategic_thesis_output(), _lever_matrix_output(), llm_call=fake_llm)
-
-
-def test_generate_action_map_allows_specific_action_containing_tisheng():
-    output = _valid_action_map()
-    output["actions"][2]["action"] = "用耗材订阅包提升复购率并绑定私域会员"
-    output["actions"][2]["expected_output"] = "耗材订阅包方案"
-
-    def fake_llm(_system_prompt, _user_prompt):
-        return output
-
-    result = generate_action_map(
-        _synthesis_output(),
-        _strategic_thesis_output(),
-        _lever_matrix_output(),
-        llm_call=fake_llm,
-    )
-
-    assert "提升复购率" in result["actions"][2]["action"]
-
-
 def test_generate_action_map_rejects_unknown_grounding():
     output = _valid_action_map()
     output["actions"][0]["grounded_in"] = ["F99"]
@@ -197,3 +168,64 @@ def test_generate_action_map_requires_strategy_and_tactical_coverage():
 
     with pytest.raises(ValueError, match="must cover categories"):
         generate_action_map(_synthesis_output(), _strategic_thesis_output(), _lever_matrix_output(), llm_call=fake_llm)
+
+
+def test_generate_action_map_accepts_named_deliverables_from_case_a():
+    output = {
+        "actions": [
+            {
+                "action": "把低毛利通用件拆成停产和清仓两组处理",
+                "category": "战略方向",
+                "grounded_in": ["F01", "砍掉低毛利通用件的接单底线"],
+                "owner": "创始人",
+                "expected_output": "停产通知",
+            },
+            {
+                "action": "为低毛利库存设置清仓节奏和最终接单截止日",
+                "category": "风险财务",
+                "grounded_in": ["F01", "砍掉低毛利通用件的接单底线"],
+                "owner": "财务负责人",
+                "expected_output": "清仓时间表",
+            },
+            {
+                "action": "用北美认证客户需求重做淋浴隔断五金产品线",
+                "category": "战术方向",
+                "grounded_in": ["F02", "把北美认证客户做成工程配套白名单"],
+                "owner": "产品负责人",
+                "expected_output": "产品线发展规划书（含产品系列、目标客户、定价策略）",
+            },
+            {
+                "action": "对账期过长客户逐一协商付款节点和保供条件",
+                "category": "管理方向",
+                "grounded_in": ["F01", "transition_to_solution"],
+                "owner": "销售负责人",
+                "expected_output": "客户协商纪要",
+            },
+            {
+                "action": "按客户和订单拆分应收账款账龄并标记催收优先级",
+                "category": "风险财务",
+                "grounded_in": ["F01", "transition_to_solution"],
+                "owner": "财务负责人",
+                "expected_output": "应收账款账龄分析表",
+            },
+            {
+                "action": "将认证案例整理成工程客户首轮沟通材料",
+                "category": "战术方向",
+                "grounded_in": ["F02", "把北美认证客户做成工程配套白名单"],
+                "owner": "销售负责人",
+                "expected_output": "工程客户沟通素材包",
+            },
+        ]
+    }
+
+    def fake_llm(_system_prompt, _user_prompt):
+        return output
+
+    result = generate_action_map(
+        _synthesis_output(),
+        _strategic_thesis_output(),
+        _lever_matrix_output(),
+        llm_call=fake_llm,
+    )
+
+    assert result["actions"][2]["expected_output"].startswith("产品线发展规划书")

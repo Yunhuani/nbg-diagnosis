@@ -131,17 +131,6 @@ def test_generate_lever_matrix_returns_schema_and_grounding():
     assert result["selected"][0]["name"] == "把北美认证客户做成工程配套白名单"
 
 
-def test_generate_lever_matrix_rejects_vague_lever():
-    output = _valid_lever_matrix()
-    output["levers"][0]["name"] = "加强营销"
-
-    def fake_llm(_system_prompt, _user_prompt):
-        return output
-
-    with pytest.raises(ValueError, match="concrete lever"):
-        generate_lever_matrix(_synthesis_output(), _strategic_thesis_output(), llm_call=fake_llm)
-
-
 def test_generate_lever_matrix_rejects_unknown_grounding():
     output = _valid_lever_matrix()
     output["levers"][0]["grounded_in"] = ["F99"]

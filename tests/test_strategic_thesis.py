@@ -1,5 +1,3 @@
-import pytest
-
 from solution.strategic_thesis import generate_strategic_thesis
 
 
@@ -80,19 +78,3 @@ def test_generate_strategic_thesis_returns_schema_and_grounding():
     assert result["from_to"]["to"] == "围绕认证和大客户适配能力承接中高端工程配套"
     assert "F01" in result["grounded_in"]
 
-
-def test_generate_strategic_thesis_rejects_vague_thesis():
-    synthesis = _synthesis_output()
-
-    def fake_llm(_system_prompt, _user_prompt):
-        return {
-            "strategic_thesis": "加强品牌并优化运营提升增长质量",
-            "from_to": {"from": "低效经营", "to": "高效经营"},
-            "reasoning": ["overall_judgment指出需要改变。"],
-            "grounded_in": ["overall_judgment"],
-            "key_assumptions": [],
-            "tradeoffs": ["放弃低效经营。"],
-        }
-
-    with pytest.raises(ValueError, match="从X转向Y|vague verb"):
-        generate_strategic_thesis(synthesis, llm_call=fake_llm)

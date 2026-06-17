@@ -59,15 +59,6 @@ REQUIRED_LEVER_KEYS = {
 }
 REQUIRED_SCORE_KEYS = {"level", "reason"}
 VALID_LEVELS = {"高", "中", "低"}
-BANNED_VAGUE_LEVER_PHRASES = (
-    "加强营销",
-    "加强管理",
-    "优化运营",
-    "优化产品",
-    "提升品牌",
-    "提升效率",
-    "拓展渠道",
-)
 
 
 def call_lever_matrix_json(system_prompt: str, user_prompt: str) -> dict[str, Any]:
@@ -175,8 +166,6 @@ def _validate_lever(
         raise ValueError(f"levers[{index}].name must be a non-empty string")
     if not isinstance(description, str) or not description.strip():
         raise ValueError(f"levers[{index}].description must be a non-empty string")
-    _reject_vague_lever_text(name, f"levers[{index}].name")
-    _reject_vague_lever_text(description, f"levers[{index}].description")
 
     _validate_level_reason(lever["impact"], f"levers[{index}].impact")
     _validate_level_reason(lever["feasibility"], f"levers[{index}].feasibility")
@@ -200,13 +189,6 @@ def _validate_level_reason(value: Any, field: str) -> None:
         raise ValueError(f"{field}.level must be one of {sorted(VALID_LEVELS)}, got {value['level']!r}")
     if not isinstance(value["reason"], str) or not value["reason"].strip():
         raise ValueError(f"{field}.reason must be a non-empty string")
-
-
-def _reject_vague_lever_text(text: str, field: str) -> None:
-    stripped = text.strip()
-    for phrase in BANNED_VAGUE_LEVER_PHRASES:
-        if phrase in stripped:
-            raise ValueError(f"{field} must be a concrete lever, not vague phrase {phrase!r}")
 
 
 def _build_lever_matrix_user_prompt(

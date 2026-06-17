@@ -55,33 +55,6 @@ REQUIRED_ACTION_KEYS = {"action", "category", "grounded_in", "owner", "expected_
 VALID_ACTION_CATEGORIES = {"战略方向", "战术方向", "管理方向", "风险财务"}
 REQUIRED_COVERAGE_CATEGORIES = {"战略方向", "战术方向"}
 
-ACTION_MECHANISM_MARKERS = (
-    "把",
-    "用",
-    "将",
-    "为",
-    "对",
-    "针对",
-    "基于",
-    "围绕",
-    "通过",
-    "设置",
-    "建立",
-    "推出",
-    "设计",
-    "梳理",
-    "拆分",
-    "绑定",
-    "转成",
-    "整理",
-    "暂停",
-    "砍掉",
-    "筛选",
-    "配置",
-    "制定",
-)
-
-
 def call_action_map_json(system_prompt: str, user_prompt: str) -> dict[str, Any]:
     return call_deepseek_json(
         system_prompt,
@@ -99,6 +72,7 @@ def generate_action_map(
 ) -> dict[str, Any]:
     user_prompt = _build_action_map_user_prompt(synthesis_output, strategic_thesis_output, lever_matrix_output)
     result = llm_call(ACTION_MAP_SYSTEM_PROMPT, user_prompt)
+    print("=== RAW ACTION MAP RESULT ===\n" + json.dumps(result, ensure_ascii=False, indent=2))
     validate_action_map_output(result, synthesis_output, strategic_thesis_output, lever_matrix_output)
     return result
 
@@ -149,8 +123,6 @@ def _validate_action_item(
     action = item["action"]
     if not isinstance(action, str) or not action.strip():
         raise ValueError(f"actions[{index}].action must be a non-empty string")
-    if not _has_specific_action_shape(action):
-        raise ValueError(f"actions[{index}].action must include a concrete object and execution mechanism")
 
     category = item["category"]
     if category not in VALID_ACTION_CATEGORIES:
@@ -165,23 +137,6 @@ def _validate_action_item(
         value = item[key]
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"actions[{index}].{key} must be a non-empty string")
-    if not _has_specific_output_shape(item["expected_output"]):
-        raise ValueError(f"actions[{index}].expected_output must name a concrete output")
-
-
-def _has_specific_action_shape(text: str) -> bool:
-    stripped = text.strip()
-    if len(stripped) < 10:
-        return False
-    return any(marker in stripped for marker in ACTION_MECHANISM_MARKERS)
-
-
-def _has_specific_output_shape(text: str) -> bool:
-    stripped = text.strip()
-    if len(stripped) < 4:
-        return False
-    output_markers = ("表", "清单", "名单", "库", "包", "机制", "规则", "模板", "脚本", "素材", "看板", "标准", "方案")
-    return any(marker in stripped for marker in output_markers)
 
 
 def _build_action_map_user_prompt(

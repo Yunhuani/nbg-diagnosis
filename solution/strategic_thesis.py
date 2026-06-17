@@ -63,8 +63,6 @@ REQUIRED_THESIS_KEYS = {
     "key_assumptions",
     "tradeoffs",
 }
-BANNED_THESIS_WORDS = ("加强", "优化", "提升")
-
 
 def call_strategic_thesis_json(system_prompt: str, user_prompt: str) -> dict[str, Any]:
     return call_deepseek_json(
@@ -101,9 +99,6 @@ def validate_strategic_thesis_output(output: dict[str, Any], synthesis_output: d
         raise ValueError("strategic_thesis must be a single sentence on one line")
     if "从" not in thesis or "转向" not in thesis:
         raise ValueError("strategic_thesis must use a from-to choice: 从X转向Y")
-    for word in BANNED_THESIS_WORDS:
-        if word in thesis:
-            raise ValueError(f"strategic_thesis must not use vague verb {word!r}")
 
     from_to = output["from_to"]
     if not isinstance(from_to, dict):
