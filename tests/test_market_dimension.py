@@ -60,6 +60,9 @@ def test_market_dimension_returns_required_schema_with_source_corpus():
     def fake_llm(system_prompt, user_prompt):
         assert "MECE 机会拆解 + 波特行业分析" in user_prompt
         assert "source_corpus" in user_prompt
+        assert "【产品线盈亏事实,代码计算,只能引用不得推翻】" in user_prompt
+        assert "淋浴隔断五金=盈利" in user_prompt
+        assert "法兰/排水配件=亏损" in user_prompt
         assert "verifiedmarketreports.com/product/shower-glass-door-market" in user_prompt
         return {
             "dimension": "market",

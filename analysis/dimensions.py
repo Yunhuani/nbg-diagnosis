@@ -481,7 +481,10 @@ def _finance_score_cap(financial_facts: dict[str, Any]) -> int:
 
 def _build_dimension_user_prompt(prompt: str, fact_base: dict[str, Any]) -> str:
     fact_base_json = json.dumps(fact_base, ensure_ascii=False, indent=2)
+    product_line_anchor = _format_product_line_profit_loss_anchor(fact_base)
     return f"""{prompt}
+
+{product_line_anchor}
 
 共享事实底座如下。财务数字均为 ground truth，不得新增、修改或重算：
 {fact_base_json}
@@ -502,7 +505,10 @@ def _build_source_corpus_user_prompt(
 ) -> str:
     fact_base_json = json.dumps(fact_base, ensure_ascii=False, indent=2)
     corpus_json = json.dumps(source_corpus, ensure_ascii=False, indent=2)
+    product_line_anchor = _format_product_line_profit_loss_anchor(fact_base)
     return f"""{prompt}
+
+{product_line_anchor}
 
 共享事实底座如下。财务数字均为 ground truth，不得新增、修改或重算：
 {fact_base_json}
@@ -510,3 +516,28 @@ def _build_source_corpus_user_prompt(
 source_corpus 如下。它是本维唯一合法外部事实来源：
 {corpus_json}
 """
+
+
+def _format_product_line_profit_loss_anchor(fact_base: dict[str, Any]) -> str:
+    product_lines = fact_base.get("financial_facts", {}).get("product_lines") or []
+    entries: list[str] = []
+    for line in product_lines:
+        if not isinstance(line, dict):
+            continue
+        name = str(line.get("name", "")).strip()
+        is_loss = line.get("is_loss")
+        if not name or not isinstance(is_loss, bool):
+            continue
+        status = "亏损" if is_loss else "盈利"
+        entries.append(f"{name}={status}")
+
+    if not entries:
+        entries_text = "当前案例未提供可判定的产品线盈亏清单"
+    else:
+        entries_text = "；".join(entries)
+
+    return (
+        "【产品线盈亏事实,代码计算,只能引用不得推翻】"
+        f"{entries_text}。"
+        "描述任何产品线必须严格符合此清单,把盈利产品线说成亏损=严重错误。"
+    )

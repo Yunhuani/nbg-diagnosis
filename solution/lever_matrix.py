@@ -86,6 +86,8 @@ def generate_lever_matrix(
 ) -> dict[str, Any]:
     user_prompt = _build_lever_matrix_user_prompt(synthesis_output, strategic_thesis_output)
     result = llm_call(LEVER_MATRIX_SYSTEM_PROMPT, user_prompt)
+    print("\n=== RAW LEVER MATRIX RESULT BEFORE VALIDATION ===")
+    print(json.dumps(result, ensure_ascii=False, indent=2))
     validate_lever_matrix_output(result, synthesis_output, strategic_thesis_output)
     return result
 

@@ -44,6 +44,13 @@ def test_business_model_dimension_returns_required_schema():
     def fake_llm(system_prompt, user_prompt):
         assert "泽思 NBG 五维诊断分析引擎" in system_prompt
         assert "商业模式画布" in user_prompt
+        assert "【产品线盈亏事实,代码计算,只能引用不得推翻】" in user_prompt
+        assert "淋浴隔断五金=盈利" in user_prompt
+        assert "法兰/排水配件=亏损" in user_prompt
+        assert "浴室置物架=盈利" in user_prompt
+        assert "龙头配件=盈利" in user_prompt
+        assert "定制小单/杂项=盈利" in user_prompt
+        assert "把盈利产品线说成亏损=严重错误" in user_prompt
         assert "法兰/排水配件" in user_prompt
         return {
             "dimension": "business_model",
@@ -84,3 +91,70 @@ def test_business_model_dimension_returns_required_schema():
     assert result["core_judgment"] != "商业模式分析"
     assert result["score"]["value"] == 4
     assert result["evidence"][0]["source_type"] == "computed"
+
+
+def test_business_model_profit_loss_anchor_is_dynamic_per_case():
+    financial_facts = calculate_financial_facts(
+        product_lines=[
+            {"name": "高速电吹风", "revenue": 8000, "direct_cost": 4000, "allocated": 2200},
+            {"name": "洁面仪", "revenue": 4500, "direct_cost": 2000, "allocated": 1500},
+            {"name": "美容仪", "revenue": 3500, "direct_cost": 1400, "allocated": 1500},
+        ],
+        customers=[{"name": "C端散客", "pct": 100}],
+        cash=6000,
+        monthly_fixed=400,
+        ar_balance=1400,
+        ar_days=28,
+    )
+    intake = {
+        "company": {"name": "橙序", "industry_sub": "国产个护小家电", "region": "国内"},
+        "business_model": {
+            "revenue_sources": "高速电吹风、洁面仪、美容仪",
+            "how_earn_retain": "靠平台投流获客",
+            "revenue_mix": None,
+        },
+        "availability_map": {
+            "plus_present": ["finance.product_lines"],
+            "plus_missing": ["business_model.revenue_mix"],
+        },
+    }
+    fact_base = assemble_fact_base(intake, financial_facts)
+
+    def fake_llm(_system_prompt, user_prompt):
+        assert "高速电吹风=盈利" in user_prompt
+        assert "洁面仪=盈利" in user_prompt
+        assert "美容仪=盈利" in user_prompt
+        assert "淋浴隔断五金" not in user_prompt
+        assert "法兰/排水配件" not in user_prompt
+        return {
+            "dimension": "business_model",
+            "framework": ["商业模式画布"],
+            "core_judgment": "你靠投流拉动销量,但收入结构还没有形成复购闭环",
+            "reasoning_chain": [
+                "高速电吹风、洁面仪和美容仪均为盈利产品线",
+                "盈利事实说明问题不是单线亏损,而是增长来源过度依赖投流",
+                "商业模式需要识别复购与留存环节是否能承接获客成本",
+            ],
+            "evidence": [
+                {
+                    "claim": "三条产品线均为盈利",
+                    "value": "盈利",
+                    "benchmark": "产品线盈亏事实清单",
+                    "source_type": "computed",
+                    "source": "financial_facts.product_lines",
+                }
+            ],
+            "reversal_candidate": None,
+            "score": {"value": 5, "label": "亚健康", "rubric_basis": "增长依赖投流但产品线未亏损"},
+            "degradation": {
+                "degraded": True,
+                "missing_plus": ["business_model.revenue_mix"],
+                "upgrade_hook": "提供收入占比可判断复购结构",
+            },
+            "strength": "medium",
+            "open_questions": [],
+        }
+
+    result = analyze_business_model(fact_base, llm_call=fake_llm)
+
+    assert result["dimension"] == "business_model"

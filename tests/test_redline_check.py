@@ -553,6 +553,39 @@ def test_redline_check_catches_loss_hallucination_for_profitable_product_line():
     assert any("联名礼盒" in failure["reason"] for failure in report["failures"])
 
 
+def test_redline_check_allows_profit_and_loss_lines_compared_in_reasoning():
+    dimensions = [
+        _dimension(
+            "business_model",
+            4,
+            [
+                _evidence(
+                    "法兰/排水配件亏损,淋浴隔断五金承载认证壁垒",
+                    "定性对比",
+                    "computed",
+                    "financial_facts.product_lines",
+                )
+            ],
+        )
+    ]
+    dimensions[0]["core_judgment"] = "淋浴隔断五金是盈利业务,法兰/排水配件是亏损线"
+    dimensions[0]["reasoning_chain"] = [
+        "法兰/排水配件作为亏损线,暴露通用配件收入没有转化为利润。",
+        "认证和长期合作主要绑定在淋浴隔断五金上,它是盈利业务而不是亏损线。",
+        "因此问题不是所有产品线都亏损,而是亏损线与盈利认证业务被放在同一个低价代工逻辑里。",
+    ]
+
+    report = run_redline_check(
+        dimensions,
+        None,
+        financial_facts=FINANCIAL_FACTS,
+        source_corpora=SOURCE_CORPORA,
+        scope="single",
+    )
+
+    assert report["passed"] is True
+
+
 def test_redline_check_catches_loss_hallucination_inside_evidence():
     dimensions = [
         _dimension("business_model", 4, [

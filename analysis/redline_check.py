@@ -251,11 +251,9 @@ def _check_product_loss_claim_consistency(
     for dim_index, dim in enumerate(dimension_outputs):
         dimension = dim.get("dimension", f"#{dim_index}")
         for path, text in _dimension_claim_texts(dim_index, dim):
-            if not _claims_loss(text):
-                continue
             for line in profitable_lines:
                 product_name = str(line["name"])
-                if product_name in text:
+                if _claims_loss_about_product(text, product_name):
                     _add_failure(
                         failures,
                         "product_loss_consistency",
@@ -290,6 +288,45 @@ def _claims_loss(text: str) -> bool:
     if any(term in text for term in loss_terms):
         return True
     return "亏" in text
+
+
+def _claims_loss_about_product(text: str, product_name: str) -> bool:
+    if not product_name or product_name not in text or not _claims_loss(text):
+        return False
+
+    escaped_name = re.escape(product_name)
+    loss_nouns = (
+        "亏损产品线",
+        "亏损线",
+        "亏损产品",
+        "亏钱产品",
+        "负贡献产品线",
+        "负贡献产品",
+        "利润黑洞",
+        "失血点",
+    )
+    loss_terms = ("亏损", "亏钱", "净亏", "年亏", "亏了", "亏掉", "负贡献", "利润黑洞", "失血")
+    subject_markers = ("是", "为", "作为", "属于", "变成", "成为", "构成", "也在", "仍在", "都在", "都是")
+
+    product_then_loss = (
+        rf"{escaped_name}[^。；;，,\n]{{0,12}}"
+        rf"(?:{'|'.join(map(re.escape, subject_markers))})?"
+        rf"[^。；;，,\n]{{0,8}}(?:{'|'.join(map(re.escape, loss_terms + loss_nouns))})"
+    )
+    loss_then_product = (
+        rf"(?:{'|'.join(map(re.escape, loss_nouns))})"
+        rf"[^。；;，,\n]{{0,10}}(?:是|为|包括|包含|来自|落在|集中在)?"
+        rf"[^。；;，,\n]{{0,8}}{escaped_name}"
+    )
+    grouped_subject_loss = (
+        rf"{escaped_name}[^。；;，,\n]{{0,20}}"
+        rf"(?:都是|均为|均是|都属于|也在|仍在)"
+        rf"[^。；;，,\n]{{0,8}}(?:{'|'.join(map(re.escape, loss_terms + loss_nouns))})"
+    )
+    return any(
+        re.search(pattern, text)
+        for pattern in (product_then_loss, loss_then_product, grouped_subject_loss)
+    )
 
 
 def _check_degradation_missing_plus(
