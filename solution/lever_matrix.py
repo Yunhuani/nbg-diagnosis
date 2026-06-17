@@ -236,13 +236,27 @@ def _validate_grounding(
         for key in ("strategic_thesis", "from_to", "reasoning", "grounded_in", "key_assumptions", "tradeoffs")
         if key in strategic_thesis_output
     }
+    strategy_values = _collect_string_values(strategic_thesis_output)
     for index, item in enumerate(grounded_in):
-        if item in finding_ids or item in known_synthesis or item in known_strategy:
+        if item in finding_ids or item in known_synthesis or item in known_strategy or item in strategy_values:
             continue
         if any(finding_id in item for finding_id in finding_ids):
             continue
-        if any(name in item for name in known_synthesis | known_strategy):
+        if any(name in item for name in known_synthesis | known_strategy | strategy_values):
             continue
         raise ValueError(
             f"grounded_in[{index}] must reference synthesis findings or strategic thesis fields, got {item!r}"
         )
+
+
+def _collect_string_values(value: Any) -> set[str]:
+    values: set[str] = set()
+    if isinstance(value, str) and value.strip():
+        values.add(value.strip())
+    elif isinstance(value, dict):
+        for item in value.values():
+            values.update(_collect_string_values(item))
+    elif isinstance(value, list):
+        for item in value:
+            values.update(_collect_string_values(item))
+    return values

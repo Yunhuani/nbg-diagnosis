@@ -142,6 +142,20 @@ def test_generate_lever_matrix_rejects_unknown_grounding():
         generate_lever_matrix(_synthesis_output(), _strategic_thesis_output(), llm_call=fake_llm)
 
 
+def test_generate_lever_matrix_accepts_grounding_carried_from_thesis():
+    thesis = _strategic_thesis_output()
+    thesis["grounded_in"] = ["market.core_judgment"]
+    output = _valid_lever_matrix()
+    output["levers"][0]["grounded_in"] = ["market.core_judgment"]
+
+    def fake_llm(_system_prompt, _user_prompt):
+        return output
+
+    result = generate_lever_matrix(_synthesis_output(), thesis, llm_call=fake_llm)
+
+    assert result["levers"][0]["grounded_in"] == ["market.core_judgment"]
+
+
 def test_generate_lever_matrix_rejects_selecting_every_candidate():
     output = _valid_lever_matrix()
     output["selected"] = [

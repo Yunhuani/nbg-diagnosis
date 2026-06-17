@@ -198,8 +198,20 @@ def _validate_grounding(
         if isinstance(item, dict) and isinstance(item.get("name"), str)
     }
     known_lever_fields = {"levers", "selected", "lever_matrix"}
+    upstream_values = (
+        _collect_string_values(strategic_thesis_output)
+        | _collect_string_values(lever_matrix_output)
+    )
 
-    allowed_terms = finding_ids | known_synthesis | known_strategy | lever_names | selected_names | known_lever_fields
+    allowed_terms = (
+        finding_ids
+        | known_synthesis
+        | known_strategy
+        | lever_names
+        | selected_names
+        | known_lever_fields
+        | upstream_values
+    )
     for index, item in enumerate(grounded_in):
         if item in allowed_terms:
             continue
@@ -208,3 +220,16 @@ def _validate_grounding(
         raise ValueError(
             f"grounded_in[{index}] must reference synthesis, strategy, or lever matrix fields, got {item!r}"
         )
+
+
+def _collect_string_values(value: Any) -> set[str]:
+    values: set[str] = set()
+    if isinstance(value, str) and value.strip():
+        values.add(value.strip())
+    elif isinstance(value, dict):
+        for item in value.values():
+            values.update(_collect_string_values(item))
+    elif isinstance(value, list):
+        for item in value:
+            values.update(_collect_string_values(item))
+    return values

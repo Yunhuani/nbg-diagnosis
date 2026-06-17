@@ -80,11 +80,15 @@ def generate_strategic_thesis(
 ) -> dict[str, Any]:
     user_prompt = _build_strategic_thesis_user_prompt(synthesis_output, dimension_outputs)
     result = llm_call(STRATEGIC_THESIS_SYSTEM_PROMPT, user_prompt)
-    validate_strategic_thesis_output(result, synthesis_output)
+    validate_strategic_thesis_output(result, synthesis_output, dimension_outputs)
     return result
 
 
-def validate_strategic_thesis_output(output: dict[str, Any], synthesis_output: dict[str, Any]) -> None:
+def validate_strategic_thesis_output(
+    output: dict[str, Any],
+    synthesis_output: dict[str, Any],
+    dimension_outputs: list[dict[str, Any]] | None = None,
+) -> None:
     if not isinstance(output, dict):
         raise ValueError(f"strategic thesis output must be an object, got {type(output).__name__}")
 
@@ -118,7 +122,7 @@ def validate_strategic_thesis_output(output: dict[str, Any], synthesis_output: d
     if not output["tradeoffs"]:
         raise ValueError("tradeoffs must not be empty")
 
-    _validate_grounding(output["grounded_in"], synthesis_output)
+    _validate_grounding(output["grounded_in"], synthesis_output, dimension_outputs)
 
 
 def _build_strategic_thesis_user_prompt(
@@ -143,7 +147,11 @@ def _validate_string_array(value: Any, field: str) -> None:
             raise ValueError(f"{field}[{index}] must be a non-empty string")
 
 
-def _validate_grounding(grounded_in: list[str], synthesis_output: dict[str, Any]) -> None:
+def _validate_grounding(
+    grounded_in: list[str],
+    synthesis_output: dict[str, Any],
+    dimension_outputs: list[dict[str, Any]] | None,
+) -> None:
     finding_ids = {
         item["id"]
         for item in synthesis_output.get("findings", [])
@@ -156,13 +164,31 @@ def _validate_grounding(grounded_in: list[str], synthesis_output: dict[str, Any]
         "cross_resonances",
         "transition_to_solution",
     }
+    dimension_refs = _dimension_output_refs(dimension_outputs)
     for index, item in enumerate(grounded_in):
-        if item in known_conclusions or item in finding_ids:
+        if item in known_conclusions or item in finding_ids or item in dimension_refs:
             continue
         if any(finding_id in item for finding_id in finding_ids):
             continue
-        if any(name in item for name in known_conclusions):
+        if any(name in item for name in known_conclusions | dimension_refs):
             continue
         raise ValueError(
-            f"grounded_in[{index}] must reference a synthesis finding_id or known conclusion field, got {item!r}"
+            f"grounded_in[{index}] must reference a synthesis finding_id, known conclusion field, or dimension output field, got {item!r}"
         )
+
+
+def _dimension_output_refs(dimension_outputs: list[dict[str, Any]] | None) -> set[str]:
+    refs: set[str] = set()
+    if not dimension_outputs:
+        return refs
+
+    for item in dimension_outputs:
+        if not isinstance(item, dict):
+            continue
+        dimension = item.get("dimension")
+        if not isinstance(dimension, str) or not dimension:
+            continue
+        for key in item:
+            refs.add(f"{dimension}.{key}")
+            refs.add(f"dimension_outputs.{dimension}.{key}")
+    return refs

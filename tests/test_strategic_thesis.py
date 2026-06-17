@@ -1,3 +1,5 @@
+import pytest
+
 from solution.strategic_thesis import generate_strategic_thesis
 
 
@@ -77,4 +79,55 @@ def test_generate_strategic_thesis_returns_schema_and_grounding():
     assert result["strategic_thesis"].startswith("从")
     assert result["from_to"]["to"] == "围绕认证和大客户适配能力承接中高端工程配套"
     assert "F01" in result["grounded_in"]
+
+
+def test_generate_strategic_thesis_accepts_dimension_core_judgment_grounding():
+    synthesis = _synthesis_output()
+    dimension_outputs = [
+        {
+            "dimension": "market",
+            "core_judgment": "市场仍有高值工程窗口",
+            "reasoning_chain": ["第1环", "第2环", "第3环"],
+            "reversal_candidate": None,
+        }
+    ]
+
+    def fake_llm(_system_prompt, _user_prompt):
+        return {
+            "strategic_thesis": "从低价通用件代工，转向高值工程配套",
+            "from_to": {"from": "低价通用件代工", "to": "高值工程配套"},
+            "reasoning": ["market.core_judgment指出市场仍有高值工程窗口。"],
+            "grounded_in": ["market.core_judgment"],
+            "key_assumptions": [],
+            "tradeoffs": ["放弃低价通用件继续换规模。"],
+        }
+
+    result = generate_strategic_thesis(synthesis, dimension_outputs, llm_call=fake_llm)
+
+    assert result["grounded_in"] == ["market.core_judgment"]
+
+
+def test_generate_strategic_thesis_rejects_unknown_dimension_grounding():
+    synthesis = _synthesis_output()
+    dimension_outputs = [
+        {
+            "dimension": "market",
+            "core_judgment": "市场仍有高值工程窗口",
+            "reasoning_chain": ["第1环", "第2环", "第3环"],
+            "reversal_candidate": None,
+        }
+    ]
+
+    def fake_llm(_system_prompt, _user_prompt):
+        return {
+            "strategic_thesis": "从低价通用件代工，转向高值工程配套",
+            "from_to": {"from": "低价通用件代工", "to": "高值工程配套"},
+            "reasoning": ["market.fake_judgment不是上游真实字段。"],
+            "grounded_in": ["market.fake_judgment"],
+            "key_assumptions": [],
+            "tradeoffs": ["放弃低价通用件继续换规模。"],
+        }
+
+    with pytest.raises(ValueError, match="dimension output field"):
+        generate_strategic_thesis(synthesis, dimension_outputs, llm_call=fake_llm)
 
