@@ -694,3 +694,172 @@ def test_redline_check_accepts_comma_separated_external_sources():
     )
 
     assert report["passed"] is True
+
+
+def test_redline_check_catches_unsupported_external_opportunity_in_market_reasoning():
+    source_corpora = {
+        "market": [
+            {
+                "claim": "家用美容仪市场约300亿,射频类产品面临监管大限",
+                "value": "约300亿,2026年4月大限",
+                "source_url": "21jingji.com/article/20240121",
+                "source_tier": "可信二手",
+            }
+        ],
+        "competition": [],
+    }
+    dimensions = [
+        _dimension(
+            "market",
+            4,
+            [
+                _evidence(
+                    "美容仪监管窗口变短",
+                    "2026年4月大限",
+                    "verified",
+                    "21jingji.com/article/20240121",
+                )
+            ],
+        )
+    ]
+    dimensions[0]["core_judgment"] = "真正机会在中东高端工程渠道,但需要验证。"
+    dimensions[0]["reasoning_chain"] = [
+        "美容仪监管窗口变短。",
+        "耗材复购有存量价值。",
+        "中东高端工程渠道可能提供新增量。",
+    ]
+
+    report = run_redline_check(
+        dimensions,
+        None,
+        financial_facts=CHENGXU_FINANCIAL_FACTS,
+        source_corpora=source_corpora,
+        scope="single",
+    )
+
+    assert report["passed"] is False
+    assert "unsupported_external_opportunity" in _checks(report)
+
+
+def test_redline_check_allows_external_opportunity_when_source_corpus_supports_it():
+    source_corpora = {
+        "market": [
+            {
+                "claim": "中东高端工程渠道对定制个护设备存在需求线索",
+                "value": "定性线索",
+                "source_url": "example.com/middle-east-spa-channel",
+                "source_tier": "仅线索",
+            }
+        ],
+        "competition": [],
+    }
+    dimensions = [
+        _dimension(
+            "market",
+            4,
+            [
+                _evidence(
+                    "中东高端工程渠道存在需求线索",
+                    "定性线索",
+                    "inferred",
+                    "example.com/middle-east-spa-channel",
+                )
+            ],
+        )
+    ]
+    dimensions[0]["core_judgment"] = "中东高端工程渠道只是待验证的方向线索。"
+    dimensions[0]["reasoning_chain"] = [
+        "source_corpus显示中东高端工程渠道存在需求线索。",
+        "该线索可信度低,不能作为硬数据。",
+        "因此只能作为待验证机会,不能直接定为主机会。",
+    ]
+
+    report = run_redline_check(
+        dimensions,
+        None,
+        financial_facts=CHENGXU_FINANCIAL_FACTS,
+        source_corpora=source_corpora,
+        scope="single",
+    )
+
+    assert report["passed"] is True
+
+
+def test_redline_check_allows_external_opportunity_when_diagnosis_intake_supports_it():
+    source_corpora = {"market": [], "competition": []}
+    diagnosis_intake = {
+        "competition": {
+            "unique_assets": ["北美主要建材连锁的合格供应商认证"],
+        },
+        "market": {
+            "expansion_intent": "中东高端工程与无框淋浴隔断配套五金",
+        },
+    }
+    dimensions = [
+        _dimension(
+            "competition",
+            6,
+            [_evidence("认证资产来自客户问卷", "定性", "client_provided", "diagnosis_intake.competition.unique_assets")],
+        )
+    ]
+    dimensions[0]["core_judgment"] = "北美认证资产可能形成高端工程渠道的进入门槛。"
+    dimensions[0]["reasoning_chain"] = [
+        "客户问卷提供了北美主要建材连锁认证。",
+        "该认证可能解释其在高端工程渠道中的进入门槛。",
+        "该判断仍需验证客户是否存在竞品替代。",
+    ]
+
+    report = run_redline_check(
+        dimensions,
+        None,
+        financial_facts=FINANCIAL_FACTS,
+        source_corpora=source_corpora,
+        diagnosis_intake=diagnosis_intake,
+        scope="single",
+    )
+
+    assert report["passed"] is True
+
+
+def test_redline_check_rejects_external_opportunity_absent_from_corpus_and_intake():
+    source_corpora = {
+        "market": [
+            {
+                "claim": "家用美容仪市场约300亿,射频类产品面临监管大限",
+                "value": "约300亿,2026年4月大限",
+                "source_url": "21jingji.com/article/20240121",
+                "source_tier": "可信二手",
+            }
+        ],
+        "competition": [],
+    }
+    diagnosis_intake = {
+        "company": {"industry_sub": "国产个护小家电"},
+        "market": {"home_market": "国内线上个护小家电"},
+        "competition": {"unique_assets": ["50万私域会员", "耗材复购黏性"]},
+    }
+    dimensions = [
+        _dimension(
+            "market",
+            4,
+            [_evidence("美容仪监管窗口变短", "2026年4月大限", "verified", "21jingji.com/article/20240121")],
+        )
+    ]
+    dimensions[0]["core_judgment"] = "真正机会在中东高端工程渠道。"
+    dimensions[0]["reasoning_chain"] = [
+        "美容仪监管窗口变短。",
+        "耗材复购有存量价值。",
+        "中东高端工程渠道可能提供新增量。",
+    ]
+
+    report = run_redline_check(
+        dimensions,
+        None,
+        financial_facts=CHENGXU_FINANCIAL_FACTS,
+        source_corpora=source_corpora,
+        diagnosis_intake=diagnosis_intake,
+        scope="single",
+    )
+
+    assert report["passed"] is False
+    assert "unsupported_external_opportunity" in _checks(report)

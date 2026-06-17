@@ -32,6 +32,25 @@ COMPUTED_SOURCE_STYLE = (
     "and optional [n] list indexes; multiple paths are comma-separated. "
     "For robustness, shorthand fields after a comma inherit the previous parent path."
 )
+EXTERNAL_OPPORTUNITY_TERMS = (
+    "中东",
+    "GCC",
+    "北美",
+    "欧洲",
+    "欧美",
+    "美国",
+    "海外",
+    "酒店",
+    "会所",
+    "SPA",
+    "高端工程",
+    "无框",
+    "有框",
+    "高端饰面",
+    "淋浴",
+    "卫浴",
+    "五金",
+)
 
 
 def run_redline_check(
@@ -41,6 +60,7 @@ def run_redline_check(
     financial_facts: dict[str, Any],
     source_corpora: dict[str, list[dict[str, Any]]],
     availability_map: dict[str, Any] | None = None,
+    diagnosis_intake: dict[str, Any] | None = None,
     scope: str = "full",
 ) -> dict[str, Any]:
     if scope not in {"single", "full"}:
@@ -55,6 +75,7 @@ def run_redline_check(
     _check_product_loss_claim_consistency(dimension_outputs, financial_facts, failures)
     _check_degradation_missing_plus(dimension_outputs, availability_map, failures)
     _check_reasoning_chain_source_leaks(dimension_outputs, failures)
+    _check_unsupported_external_opportunities(dimension_outputs, source_corpora, diagnosis_intake, failures)
     if scope == "full" and synthesis_output is not None:
         _check_synthesis_headline(synthesis_output, failures)
         _check_reversal_integrity(synthesis_output, failures)
@@ -328,6 +349,60 @@ def _check_reasoning_chain_source_leaks(
                 f"reasoning_chain must not embed source/link/path marker {marker!r}",
             )
 
+
+
+def _check_unsupported_external_opportunities(
+    dimension_outputs: list[dict[str, Any]],
+    source_corpora: dict[str, list[dict[str, Any]]],
+    diagnosis_intake: dict[str, Any] | None,
+    failures: list[dict[str, str]],
+) -> None:
+    for dim_index, dim in enumerate(dimension_outputs):
+        dimension = dim.get("dimension", f"#{dim_index}")
+        if dimension not in {"market", "competition"}:
+            continue
+        support_text = _external_support_text(source_corpora.get(dimension, []), diagnosis_intake)
+        text_fields = [("core_judgment", str(dim.get("core_judgment", "")))]
+        text_fields.extend(
+            (f"reasoning_chain[{chain_index}]", str(item))
+            for chain_index, item in enumerate(dim.get("reasoning_chain", []))
+        )
+        for field, text in text_fields:
+            for term in EXTERNAL_OPPORTUNITY_TERMS:
+                if term not in text or term in support_text:
+                    continue
+                _add_failure(
+                    failures,
+                    "unsupported_external_opportunity",
+                    f"dimensions[{dim_index}].{field}",
+                    (
+                        f"{dimension} mentions external opportunity/fact term {term!r} "
+                        "in core_judgment/reasoning_chain, but this term is absent from source_corpus and diagnosis_intake"
+                    ),
+                )
+
+
+def _external_support_text(
+    source_corpus: list[dict[str, Any]],
+    diagnosis_intake: dict[str, Any] | None,
+) -> str:
+    parts: list[str] = []
+    for item in source_corpus:
+        for field in ("claim", "value"):
+            parts.append(str(item.get(field, "")))
+    if diagnosis_intake is not None:
+        parts.append(_stringify_nested_text(diagnosis_intake))
+    return "\n".join(parts)
+
+
+def _stringify_nested_text(value: Any) -> str:
+    if isinstance(value, dict):
+        return "\n".join(_stringify_nested_text(child) for child in value.values())
+    if isinstance(value, list):
+        return "\n".join(_stringify_nested_text(child) for child in value)
+    if value is None:
+        return ""
+    return str(value)
 
 def _check_reversal_integrity(
     synthesis_output: dict[str, Any],

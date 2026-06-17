@@ -108,7 +108,14 @@ def test_finance_dimension_returns_required_schema_and_respects_score_cap():
 
     def fake_llm(system_prompt, user_prompt):
         assert "解读,不计算" in user_prompt
-        assert "score.value 必须 ≤ 3" in user_prompt
+        assert "cash_runway_months < 2" in user_prompt
+        assert "score.value ≤ 3" in user_prompt
+        assert "product_lines[].is_loss=true" in user_prompt
+        assert "revenue_share > 0.15" in user_prompt
+        assert "score.value ≤ 4" in user_prompt
+        assert "customer_concentration.top3_pct > 60" in user_prompt
+        assert "score.value ≤ 5" in user_prompt
+        assert "取最严格上限" in user_prompt
         return {
             "dimension": "finance",
             "framework": ["杜邦分析 + 全成本作业法 + 营运资金周期模型"],
