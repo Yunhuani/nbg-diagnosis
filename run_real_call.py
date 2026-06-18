@@ -23,6 +23,7 @@ from finance import calculate_financial_facts
 from solution import (
     generate_action_map,
     generate_lever_matrix,
+    generate_ninety_day_plan,
     generate_roadmap,
     generate_strategic_thesis,
 )
@@ -597,6 +598,7 @@ def main() -> None:
                 "levers",
                 "action_map",
                 "roadmap",
+                "plan",
             ]
         ),
         help="Dimension to run, or synthesis to run all five dimensions then synthesize.",
@@ -704,6 +706,39 @@ def main() -> None:
             action_map,
         )
         print(json.dumps(roadmap, ensure_ascii=False, indent=2))
+        return
+
+    if args.dimension == "plan":
+        dimension_outputs, synthesis, _score_summary = run_full_synthesis_flow(fact_base, args.case)
+        print_redline_report(dimension_outputs, synthesis, fact_base, source_corpora, scope="full")
+        print("\n=== DEEPSEEK STRATEGIC THESIS OUTPUT ===")
+        thesis = generate_strategic_thesis(synthesis, dimension_outputs)
+        print(json.dumps(thesis, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK LEVER MATRIX OUTPUT ===")
+        lever_matrix = generate_lever_matrix(synthesis, thesis)
+        print(json.dumps(lever_matrix, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK ACTION MAP OUTPUT ===")
+        action_map = generate_action_map(synthesis, thesis, lever_matrix)
+        print(json.dumps(action_map, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK ROADMAP OUTPUT ===")
+        roadmap = generate_roadmap(
+            synthesis,
+            dimension_outputs,
+            thesis,
+            lever_matrix,
+            action_map,
+        )
+        print(json.dumps(roadmap, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK NINETY DAY PLAN OUTPUT ===")
+        plan = generate_ninety_day_plan(
+            synthesis,
+            dimension_outputs,
+            thesis,
+            lever_matrix,
+            action_map,
+            roadmap,
+        )
+        print(json.dumps(plan, ensure_ascii=False, indent=2))
         return
 
     print(f"\n=== DEEPSEEK {args.dimension} OUTPUT ===")
