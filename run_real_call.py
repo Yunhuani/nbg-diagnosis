@@ -584,6 +584,62 @@ def generate_report(
     return output_file
 
 
+def generate_solution_report(
+    *,
+    case: str,
+    fact_base: dict,
+    dimension_outputs: list[dict],
+    synthesis: dict,
+    thesis: dict,
+    lever_matrix: dict,
+    action_map: dict,
+    roadmap: dict,
+    ninety_day_plan: dict,
+) -> Path:
+    output_dir = Path("report") / "output"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    company_name = fact_base.get("diagnosis_intake", {}).get("company", {}).get("name", f"case_{case}")
+    input_file = output_dir / f"{company_name}_case_{case}_solution_report_input.json"
+    output_file = output_dir / f"{company_name}_增长方案报告.pptx"
+    payload = {
+        "case": case,
+        "company": company_name,
+        "fact_base": fact_base,
+        "financial_facts": fact_base["financial_facts"],
+        "dimension_outputs": dimension_outputs,
+        "synthesis_output": synthesis,
+        "strategic_thesis": thesis,
+        "lever_matrix": lever_matrix,
+        "action_map": action_map,
+        "roadmap": roadmap,
+        "ninety_day_plan": ninety_day_plan,
+    }
+    input_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    result = subprocess.run(
+        [
+            "node",
+            str(Path("report") / "generate_solution_report.js"),
+            "--input",
+            str(input_file),
+            "--out",
+            str(output_file),
+        ],
+        check=False,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+    )
+    print("\n=== SOLUTION REPORT GENERATION OUTPUT ===")
+    if result.stdout:
+        print(result.stdout)
+    if result.stderr:
+        print(result.stderr)
+    if result.returncode != 0:
+        raise SystemExit(result.returncode)
+    return output_file
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a real DeepSeek dimension call.")
     parser.add_argument(
@@ -599,6 +655,7 @@ def main() -> None:
                 "action_map",
                 "roadmap",
                 "plan",
+                "solution_report",
             ]
         ),
         help="Dimension to run, or synthesis to run all five dimensions then synthesize.",
@@ -739,6 +796,51 @@ def main() -> None:
             roadmap,
         )
         print(json.dumps(plan, ensure_ascii=False, indent=2))
+        return
+
+    if args.dimension == "solution_report":
+        dimension_outputs, synthesis, _score_summary = run_full_synthesis_flow(fact_base, args.case)
+        print_redline_report(dimension_outputs, synthesis, fact_base, source_corpora, scope="full")
+        print("\n=== DEEPSEEK STRATEGIC THESIS OUTPUT ===")
+        thesis = generate_strategic_thesis(synthesis, dimension_outputs)
+        print(json.dumps(thesis, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK LEVER MATRIX OUTPUT ===")
+        lever_matrix = generate_lever_matrix(synthesis, thesis)
+        print(json.dumps(lever_matrix, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK ACTION MAP OUTPUT ===")
+        action_map = generate_action_map(synthesis, thesis, lever_matrix)
+        print(json.dumps(action_map, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK ROADMAP OUTPUT ===")
+        roadmap = generate_roadmap(
+            synthesis,
+            dimension_outputs,
+            thesis,
+            lever_matrix,
+            action_map,
+        )
+        print(json.dumps(roadmap, ensure_ascii=False, indent=2))
+        print("\n=== DEEPSEEK NINETY DAY PLAN OUTPUT ===")
+        ninety_day_plan = generate_ninety_day_plan(
+            synthesis,
+            dimension_outputs,
+            thesis,
+            lever_matrix,
+            action_map,
+            roadmap,
+        )
+        print(json.dumps(ninety_day_plan, ensure_ascii=False, indent=2))
+        output_file = generate_solution_report(
+            case=args.case,
+            fact_base=fact_base,
+            dimension_outputs=dimension_outputs,
+            synthesis=synthesis,
+            thesis=thesis,
+            lever_matrix=lever_matrix,
+            action_map=action_map,
+            roadmap=roadmap,
+            ninety_day_plan=ninety_day_plan,
+        )
+        print(f"\n=== SOLUTION REPORT FILE ===\n{output_file.resolve()}")
         return
 
     print(f"\n=== DEEPSEEK {args.dimension} OUTPUT ===")
