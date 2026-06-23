@@ -1,5 +1,7 @@
 import api_server
 import pytest
+import time
+from threading import Event, Lock
 
 
 def _dimension_output(dimension):
@@ -86,6 +88,109 @@ def test_run_diagnosis_completes_and_marks_finance_degraded_for_null_basic_finan
     )
     assert finance_output["degradation"]["degraded"] is True
     assert "现金跑道月数" in finance_output["degradation"]["upgrade_hook"]
+
+
+def test_run_diagnosis_executes_five_dimensions_in_parallel_and_preserves_order(
+    monkeypatch,
+):
+    dimensions = [
+        "market",
+        "competition",
+        "business_model",
+        "capability",
+        "finance",
+    ]
+    release = Event()
+    lock = Lock()
+    active = 0
+    peak_active = 0
+    synthesis_inputs = []
+
+    def fake_dimension(dimension, fact_base, source_corpora):
+        nonlocal active, peak_active
+        with lock:
+            active += 1
+            peak_active = max(peak_active, active)
+            if active == 3:
+                release.set()
+        assert release.wait(timeout=1)
+        time.sleep(0.05)
+        try:
+            return {
+                **_dimension_output(dimension),
+                "score": {"value": 5},
+            }
+        finally:
+            with lock:
+                active -= 1
+
+    def fake_synthesis(outputs, **kwargs):
+        synthesis_inputs.append(outputs)
+        return {"status": "complete"}
+
+    monkeypatch.setattr(api_server, "_run_dimension_with_retry", fake_dimension)
+    monkeypatch.setattr(api_server, "_run_synthesis_with_retry", fake_synthesis)
+    monkeypatch.setattr(
+        api_server,
+        "_calculate_financial_facts",
+        lambda intake: {"cash_runway_months": 1.6},
+    )
+
+    result = api_server._run_diagnosis(
+        {"availability_map": {}},
+        {"market": [], "competition": []},
+    )
+
+    assert [item["dimension"] for item in result["dimension_outputs"]] == dimensions
+    assert synthesis_inputs == [result["dimension_outputs"]]
+    assert peak_active == 3
+
+
+def test_run_diagnosis_does_not_start_synthesis_when_parallel_dimension_fails(
+    monkeypatch,
+):
+    release = Event()
+    lock = Lock()
+    started = 0
+    synthesis_called = False
+
+    def fake_dimension(dimension, fact_base, source_corpora):
+        nonlocal started
+        with lock:
+            started += 1
+            if started == 3:
+                release.set()
+        assert release.wait(timeout=1)
+        if dimension == "capability":
+            raise RuntimeError("capability failed after 3 attempts")
+        return {
+            **_dimension_output(dimension),
+            "score": {"value": 5},
+        }
+
+    def fake_synthesis(outputs, **kwargs):
+        nonlocal synthesis_called
+        synthesis_called = True
+        return {}
+
+    monkeypatch.setattr(api_server, "_run_dimension_with_retry", fake_dimension)
+    monkeypatch.setattr(api_server, "_run_synthesis_with_retry", fake_synthesis)
+    monkeypatch.setattr(
+        api_server,
+        "_calculate_financial_facts",
+        lambda intake: {"cash_runway_months": 1.6},
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="capability failed after 3 attempts",
+    ):
+        api_server._run_diagnosis(
+            {"availability_map": {}},
+            {"market": [], "competition": []},
+        )
+
+    assert synthesis_called is False
 
 
 def test_dimension_retry_recovers_from_schema_validation_error(monkeypatch):

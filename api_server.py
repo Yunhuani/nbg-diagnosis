@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from threading import Lock, Thread
 from typing import Any
@@ -23,6 +24,15 @@ from analysis import (
 from finance import calculate_financial_facts
 
 logger = logging.getLogger(__name__)
+
+DIMENSIONS = (
+    "market",
+    "competition",
+    "business_model",
+    "capability",
+    "finance",
+)
+MAX_DIMENSION_WORKERS = 3
 
 
 class MarketBrief(BaseModel):
@@ -103,13 +113,23 @@ def _run_diagnosis(
     financial_facts = _calculate_financial_facts(diagnosis_intake)
     fact_base = assemble_fact_base(diagnosis_intake, financial_facts)
 
-    dimension_outputs = [
-        _run_dimension_with_retry("market", fact_base, source_corpora),
-        _run_dimension_with_retry("competition", fact_base, source_corpora),
-        _run_dimension_with_retry("business_model", fact_base, source_corpora),
-        _run_dimension_with_retry("capability", fact_base, source_corpora),
-        _run_dimension_with_retry("finance", fact_base, source_corpora),
-    ]
+    with ThreadPoolExecutor(
+        max_workers=MAX_DIMENSION_WORKERS,
+        thread_name_prefix="diagnosis-dimension",
+    ) as executor:
+        futures = {
+            dimension: executor.submit(
+                _run_dimension_task,
+                dimension,
+                fact_base,
+                source_corpora,
+            )
+            for dimension in DIMENSIONS
+        }
+        dimension_outputs = [
+            futures[dimension].result()
+            for dimension in DIMENSIONS
+        ]
     _mark_external_brief_degradation(dimension_outputs, source_corpora)
     _mark_finance_basic_degradation(dimension_outputs, financial_facts)
 
@@ -127,6 +147,21 @@ def _run_diagnosis(
         "synthesis_output": synthesis_output,
         "score_summary": score_summary,
     }
+
+
+def _run_dimension_task(
+    dimension: str,
+    fact_base: dict[str, Any],
+    source_corpora: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
+    logger.info("Dimension %s started", dimension)
+    try:
+        output = _run_dimension_with_retry(dimension, fact_base, source_corpora)
+    except Exception:
+        logger.exception("Dimension %s failed", dimension)
+        raise
+    logger.info("Dimension %s completed", dimension)
+    return output
 
 
 def _run_dimension_with_retry(
