@@ -1,5 +1,5 @@
 from analysis import assemble_fact_base
-from analysis.dimensions import analyze_market
+from analysis.dimensions import MARKET_PROMPT, analyze_market
 from finance import calculate_financial_facts
 
 
@@ -17,6 +17,21 @@ SOURCE_CORPUS_MARKET = [
         "source_tier": "可信二手",
     },
 ]
+
+
+def test_market_prompt_forbids_cross_dimension_missing_plus_fields():
+    assert "不得照抄 availability_map.plus_missing 整个列表" in MARKET_PROMPT
+    assert "competition.self_scores" in MARKET_PROMPT
+    assert "competition.unique_assets" in MARKET_PROMPT
+    assert "business_model.revenue_mix" in MARKET_PROMPT
+    assert "degradation.missing_plus 必须是 []" in MARKET_PROMPT
+
+
+def test_market_prompt_forbids_unsupported_opportunities_without_source_corpus():
+    assert "source_corpus 为空" in MARKET_PROMPT
+    assert "不得自行补充任何具体地区、渠道、场景、品类或行业机会词" in MARKET_PROMPT
+    assert "只能基于 diagnosis_intake 中客户明确提供的信息" in MARKET_PROMPT
+    assert "不得伪装成有外部来源支持的事实" in MARKET_PROMPT
 
 
 def _yonghui_fact_base():

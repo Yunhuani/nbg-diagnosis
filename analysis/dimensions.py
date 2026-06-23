@@ -106,6 +106,16 @@ MARKET_PROMPT = f"""你正在做【市场与机会】维度。用 MECE 机会拆
 
 {NON_FINANCE_BOUNDARY_PROMPT}
 
+【市场维字段边界铁律】
+- 你只负责 market 维度。degradation.missing_plus 只能填写 availability_map.plus_missing 中以 "market." 开头、且确实缺失的字段。
+- 不得照抄 availability_map.plus_missing 整个列表。严禁填写或转述任何其它维度字段,包括但不限于 competition.self_scores、competition.unique_assets、business_model.revenue_mix、capability.digital_keyperson、finance.product_lines、finance.customers、finance.ar。
+- 如果 availability_map.plus_missing 中没有以 "market." 开头的项目,degradation.missing_plus 必须是 [],不得用其它维度缺失项替代。
+
+【无外部市场情报时的降级铁律】
+- source_corpus 为空时,表示没有可用的外部市场情报。不得自行补充任何具体地区、渠道、场景、品类或行业机会词,也不得凭模型记忆扩展客户未提及的机会方向。
+- 此时只能基于 diagnosis_intake 中客户明确提供的信息做方向性判断,并明确标记 degraded=true；相关证据只能标 client_provided,推断必须说明是基于客户输入的降级判断,不得伪装成有外部来源支持的事实。
+- source_corpus 未出现、diagnosis_intake 也未明确出现的具体机会词一律不得写入 core_judgment、reasoning_chain 或 evidence。需要外部验证的内容写入 open_questions 或 upgrade_hook,不要当作当前结论。
+
 【必须做的分析动作】
 1. 用 MECE 把该子品类的增长机会拆成相互独立、完全穷尽的几支,按规模/增速/适配度排序。
 2. 基于 source_corpus 判断每支机会的规模与窗口期。
