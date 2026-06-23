@@ -7,8 +7,8 @@ def calculate_financial_facts(
     *,
     product_lines: list[dict[str, Any]] | None,
     customers: list[dict[str, Any]] | None,
-    cash: float,
-    monthly_fixed: float,
+    cash: float | None,
+    monthly_fixed: float | None,
     ar_balance: float | None = None,
     ar_days: float | None = None,
 ) -> dict[str, Any]:
@@ -17,7 +17,7 @@ def calculate_financial_facts(
         "tier": "full",
         "product_lines": _calculate_product_lines(product_lines),
         "customer_concentration": _calculate_customer_concentration(customers),
-        "cash_runway_months": round(cash / monthly_fixed, 1),
+        "cash_runway_months": _calculate_cash_runway(cash, monthly_fixed),
         "ar": _calculate_ar(ar_balance, ar_days),
     }
 
@@ -29,6 +29,15 @@ def calculate_financial_facts(
         facts["tier"] = "basic_only"
 
     return facts
+
+
+def _calculate_cash_runway(
+    cash: float | None,
+    monthly_fixed: float | None,
+) -> float | None:
+    if cash is None or monthly_fixed is None:
+        return None
+    return round(cash / monthly_fixed, 1)
 
 
 def _calculate_product_lines(

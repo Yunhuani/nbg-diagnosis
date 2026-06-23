@@ -69,3 +69,17 @@ def test_calculate_financial_facts_caps_ar_release_at_zero_when_days_under_60():
     assert product_lines["联名礼盒"]["full_cost_net"] == 200.0
     assert product_lines["联名礼盒"]["is_loss"] is False
     assert facts["ar"]["releasable_at_60days"] == 0
+
+
+def test_calculate_financial_facts_omits_cash_runway_when_basic_inputs_are_missing():
+    facts = calculate_financial_facts(
+        product_lines=None,
+        customers=None,
+        cash=None,
+        monthly_fixed=None,
+        ar_balance=None,
+        ar_days=None,
+    )
+
+    assert facts["tier"] == "basic_only"
+    assert facts["cash_runway_months"] is None

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import socket
+import ssl
+import time
+from http.client import IncompleteRead
 from pathlib import Path
 from typing import Any
-from urllib import request
+from urllib import error, request
 
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-chat"
+logger = logging.getLogger(__name__)
 
 
 def call_deepseek_json(
@@ -19,6 +25,8 @@ def call_deepseek_json(
     env_path: str | Path = ".env",
     base_url: str | None = None,
     timeout: int = 60,
+    max_attempts: int = 3,
+    retry_backoff_seconds: float = 0.5,
 ) -> dict[str, Any]:
     """Call DeepSeek and return the assistant message parsed as JSON."""
     env = _load_dotenv(env_path)
@@ -59,8 +67,54 @@ def call_deepseek_json(
         method="POST",
     )
 
-    with request.urlopen(req, timeout=timeout) as response:
-        data = json.loads(response.read().decode("utf-8"))
+    response_body: bytes | None = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with request.urlopen(req, timeout=timeout) as response:
+                response_body = response.read()
+            break
+        except error.HTTPError as exc:
+            if exc.code < 500 or attempt == max_attempts:
+                logger.error(
+                    "DeepSeek request failed on attempt %s/%s: HTTP %s",
+                    attempt,
+                    max_attempts,
+                    exc.code,
+                )
+                raise
+            logger.warning(
+                "DeepSeek request retry %s/%s after HTTP %s",
+                attempt,
+                max_attempts,
+                exc.code,
+            )
+        except (
+            error.URLError,
+            TimeoutError,
+            socket.timeout,
+            ssl.SSLError,
+            ConnectionError,
+            IncompleteRead,
+        ) as exc:
+            if attempt == max_attempts:
+                logger.error(
+                    "DeepSeek request failed after %s attempts: %s",
+                    max_attempts,
+                    exc,
+                )
+                raise
+            logger.warning(
+                "DeepSeek request retry %s/%s after network error: %s",
+                attempt,
+                max_attempts,
+                exc,
+            )
+
+        if retry_backoff_seconds > 0:
+            time.sleep(retry_backoff_seconds * attempt)
+
+    assert response_body is not None
+    data = json.loads(response_body.decode("utf-8"))
 
     content = data["choices"][0]["message"]["content"]
     return _parse_json_content(content)
