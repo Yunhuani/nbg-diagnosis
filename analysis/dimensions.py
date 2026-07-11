@@ -187,7 +187,8 @@ BUSINESS_MODEL_PROMPT = f"""你正在做【商业模式】维度,不是财务维
 认真尝试找一个反转:客户视为软肋的,是否其实是商业模式上的资产?按四关检验(风险真实/机制具体/可证伪/可决策)。真试过仍找不到,才置 reversal_candidate=null。
 
 【数据标记】
-来自 financial_facts 的数字,source_type 一律标 "computed",且 source 必须写成 financial_facts 内真实路径。多个来源时,每个路径都必须写完整的 financial_facts 全路径,禁止简写省略前缀;客户问卷里的定性信息标 "client_provided"。
+只有当数字确实取自 financial_facts 的某个字段时,才允许 source_type 标 "computed",且 source 必须写成对应的 financial_facts 内真实路径。多个 financial_facts 来源时,每个路径都必须写完整的 financial_facts 全路径,禁止简写省略前缀。
+成本结构占比、市场份额、收入结构描述、客户问卷原文、行业经验判断等非 financial_facts 来源的数字,不得标 "computed",source 不得指向 financial_facts;应按真实来源标为 "client_provided"、"verified" 或 "inferred"。如果没有可核验来源,标 "inferred",并在 benchmark 中说明"仅方向判断,非硬数据"。
 
 {_format_rules_prompt("business_model", "商业模式画布")}
 """
