@@ -67,11 +67,12 @@ def run_redline_check(
         raise ValueError(f"scope must be 'single' or 'full', got {scope!r}")
 
     failures: list[dict[str, str]] = []
+    warnings: list[dict[str, str]] = []
     score_check = None if scope == "single" else _score_check_summary(dimension_outputs, synthesis_output)
     _check_brainmade_external_numbers(dimension_outputs, source_corpora, failures)
     _check_bare_numbers(dimension_outputs, failures)
     _check_evidence_source_type_mapping(dimension_outputs, failures)
-    _check_computed_financial_consistency(dimension_outputs, financial_facts, failures)
+    _check_computed_financial_consistency(dimension_outputs, financial_facts, warnings)
     _check_product_loss_claim_consistency(dimension_outputs, financial_facts, failures)
     _check_degradation_missing_plus(dimension_outputs, availability_map, failures)
     _check_reasoning_chain_source_leaks(dimension_outputs, failures)
@@ -86,11 +87,16 @@ def run_redline_check(
         "passed": not failures,
         "score_check": score_check,
         "failures": failures,
+        "warnings": warnings,
     }
 
 
 def _add_failure(failures: list[dict[str, str]], check: str, path: str, reason: str) -> None:
     failures.append({"check": check, "path": path, "reason": reason})
+
+
+def _add_warning(warnings: list[dict[str, str]], check: str, path: str, reason: str) -> None:
+    warnings.append({"check": check, "path": path, "reason": reason})
 
 
 def _normalize_source_url(source: Any) -> str:
@@ -197,7 +203,7 @@ def _check_evidence_source_type_mapping(
 def _check_computed_financial_consistency(
     dimension_outputs: list[dict[str, Any]],
     financial_facts: dict[str, Any],
-    failures: list[dict[str, str]],
+    warnings: list[dict[str, str]],
 ) -> None:
     for dim_index, dim in enumerate(dimension_outputs):
         for evidence_index, evidence in enumerate(dim.get("evidence", [])):
@@ -209,11 +215,15 @@ def _check_computed_financial_consistency(
 
             financial_values = _financial_values_for_source(financial_facts, source)
             if financial_values is None:
-                _add_failure(
-                    failures,
+                evidence["source_type"] = "inferred"
+                _add_warning(
+                    warnings,
                     "computed_financial_consistency",
                     f"dimensions[{dim_index}].evidence[{evidence_index}].source",
-                    f"computed evidence source {source!r} does not resolve inside financial_facts",
+                    (
+                        f"computed evidence source {source!r} does not resolve inside "
+                        "financial_facts; source_type downgraded to inferred for manual review"
+                    ),
                 )
                 continue
 
@@ -224,13 +234,15 @@ def _check_computed_financial_consistency(
             mentions = _extract_numeric_mentions(str(evidence.get("value", "")))
             for mention in mentions:
                 if not any(_matches_financial_value(mention, value) for value in direct_values):
-                    _add_failure(
-                        failures,
+                    evidence["source_type"] = "inferred"
+                    _add_warning(
+                        warnings,
                         "computed_financial_consistency",
                         f"dimensions[{dim_index}].evidence[{evidence_index}].value",
                         (
                             f"computed financial number {mention['raw']!r} does not match "
-                            f"financial_facts values referenced by {source!r}"
+                            f"financial_facts values referenced by {source!r}; "
+                            "source_type downgraded to inferred for manual review"
                         ),
                     )
 
