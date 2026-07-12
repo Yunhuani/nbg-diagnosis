@@ -498,6 +498,37 @@ def test_redline_check_warns_and_downgrades_market_percent_mislabelled_as_comput
     assert evidence["source_type"] == "inferred"
 
 
+def test_redline_check_catches_bare_number_in_evidence_benchmark():
+    dimensions = _clean_dimension_outputs()
+    dimensions[2]["evidence"][0] = _evidence(
+        "成本结构经验判断",
+        "成本结构偏重",
+        "unsupported",
+        "",
+        "行业经验阈值约45%",
+    )
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is False
+    assert "bare_number" in _checks(report)
+
+
+def test_redline_check_allows_inferred_number_in_evidence_benchmark():
+    dimensions = _clean_dimension_outputs()
+    dimensions[2]["evidence"][0] = _evidence(
+        "成本结构经验判断",
+        "成本结构偏重",
+        "inferred",
+        "",
+        "行业经验阈值约45%",
+    )
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is True
+
+
 def test_redline_check_catches_missing_reversal_falsifier():
     synthesis = _clean_synthesis()
     synthesis["confirmed_reversals"][0]["falsifier"] = ""

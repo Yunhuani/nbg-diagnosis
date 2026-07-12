@@ -160,17 +160,21 @@ def _check_bare_numbers(
 ) -> None:
     for dim_index, dim in enumerate(dimension_outputs):
         for evidence_index, evidence in enumerate(dim.get("evidence", [])):
-            value = str(evidence.get("value", ""))
-            if not _contains_number(value):
-                continue
-            source_type = evidence.get("source_type")
-            if source_type not in VALID_SOURCE_TYPES:
-                _add_failure(
-                    failures,
-                    "bare_number",
-                    f"dimensions[{dim_index}].evidence[{evidence_index}].source_type",
-                    f"numeric evidence value {value!r} has invalid or missing source_type {source_type!r}",
-                )
+            for field in ("value", "benchmark"):
+                value = str(evidence.get(field, ""))
+                if not _contains_number(value):
+                    continue
+                source_type = evidence.get("source_type")
+                if source_type not in VALID_SOURCE_TYPES:
+                    _add_failure(
+                        failures,
+                        "bare_number",
+                        f"dimensions[{dim_index}].evidence[{evidence_index}].source_type",
+                        (
+                            f"numeric evidence {field} {value!r} has invalid or "
+                            f"missing source_type {source_type!r}"
+                        ),
+                    )
 
 
 def _check_evidence_source_type_mapping(
