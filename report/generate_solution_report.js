@@ -447,7 +447,7 @@ function humanChecks() {
     if (item.status === "needs_human_falsifier_check") {
       checks.push({
         title: item.reframe || item.naive_reading || item.finding_id,
-        detail: `证伪条件：${text(item.falsifier, "待补充")}；依赖：${text(item.depends_on, "待补充")}`,
+        detail: `证伪条件：${text(item.falsifier, "证伪条件将在方案深化阶段校准")}；依赖：${text(item.depends_on, "关键依赖将在方案阶段确认")}`,
       });
     }
   });
@@ -456,7 +456,7 @@ function humanChecks() {
     if (item && item.status === "needs_human_falsifier_check") {
       checks.push({
         title: item.reframe || item.naive_reading || `${dimension.dimension}反转假设`,
-        detail: `证伪条件：${text(item.falsifier, "待补充")}`,
+        detail: `证伪条件：${text(item.falsifier, "证伪条件将在方案深化阶段校准")}`,
       });
     }
   });

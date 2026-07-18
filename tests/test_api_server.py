@@ -48,7 +48,8 @@ def test_mark_finance_basic_degradation_when_cash_runway_is_unavailable():
 
     degradation = outputs[0]["degradation"]
     assert degradation["degraded"] is True
-    assert "现金跑道月数" in degradation["upgrade_hook"]
+    assert "现金安全边际已按当前经营信息做结构性判断" in degradation["upgrade_hook"]
+    assert "进一步量化现金跑道和安全垫" in degradation["upgrade_hook"]
 
 
 def test_run_diagnosis_completes_and_marks_finance_degraded_for_null_basic_finance(
@@ -87,7 +88,11 @@ def test_run_diagnosis_completes_and_marks_finance_degraded_for_null_basic_finan
         if output["dimension"] == "finance"
     )
     assert finance_output["degradation"]["degraded"] is True
-    assert "现金跑道月数" in finance_output["degradation"]["upgrade_hook"]
+    assert (
+        "现金安全边际已按当前经营信息做结构性判断"
+        in finance_output["degradation"]["upgrade_hook"]
+    )
+    assert "进一步量化现金跑道和安全垫" in finance_output["degradation"]["upgrade_hook"]
 
 
 def test_run_diagnosis_executes_five_dimensions_in_parallel_and_preserves_order(

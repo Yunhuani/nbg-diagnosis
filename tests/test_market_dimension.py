@@ -29,8 +29,10 @@ def test_market_prompt_forbids_cross_dimension_missing_plus_fields():
 
 def test_market_prompt_forbids_unsupported_opportunities_without_source_corpus():
     assert "source_corpus 为空" in MARKET_PROMPT
-    assert "不得自行补充任何具体地区、渠道、场景、品类或行业机会词" in MARKET_PROMPT
-    assert "只能基于 diagnosis_intake 中客户明确提供的信息" in MARKET_PROMPT
+    assert "不得自行补充任何具体外部数字、地区、渠道、场景、品类或行业机会词" in MARKET_PROMPT
+    assert "只能基于 diagnosis_intake 中客户明确提供的信息做结构性定性判断" in MARKET_PROMPT
+    assert "客户可见表述不得出现" in MARKET_PROMPT
+    assert "该机会方向可在方案深化阶段结合目标市场订单、渠道反馈与价格带数据进一步量化" in MARKET_PROMPT
     assert "不得伪装成有外部来源支持的事实" in MARKET_PROMPT
 
 

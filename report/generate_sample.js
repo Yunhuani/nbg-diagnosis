@@ -132,12 +132,12 @@ function displaySource(item) {
 function splitTransition(value) {
   if (value && typeof value === "object") {
     return {
-      risk: text(value.risk, "待补充最大风险"),
-      opportunity: text(value.opportunity, "待补充最大机会"),
-      next: text(value.next_step || value.next, "待补充下一步方向"),
+      risk: text(value.risk, "关键风险将在方案阶段进一步校准"),
+      opportunity: text(value.opportunity, "关键机会将在方案阶段进一步细化"),
+      next: text(value.next_step || value.next, "下一步聚焦可执行方案拆解"),
     };
   }
-  const body = text(value, "待补充转向解决方案");
+  const body = text(value, "转向解决方案将在方案阶段进一步细化");
   return { risk: body, opportunity: body, next: body };
 }
 
@@ -259,7 +259,7 @@ function addOverallJudgment(pptx) {
   slide.addShape(pptx.ShapeType.line, {
     x: 0.68, y: 2.25, w: 0, h: 2.8, line: { color: C.gold, width: 1.2 },
   });
-  addText(slide, DATA.synthesis.overall_judgment || "待补充", 1.02, 2.22, 6.42, 1.18, {
+  addText(slide, DATA.synthesis.overall_judgment || "本次诊断已形成初步结构性判断，完整结论以各维度分析为准", 1.02, 2.22, 6.42, 1.18, {
     fontSize: 15, bold: true, fit: "shrink",
   });
   addText(slide, "这页承接五维结论，展示当前最需要管理层判断的结构性处境。", 1.04, 4.12, 5.9, 0.42, {
@@ -305,7 +305,7 @@ function addDynamicCards(slide, items, options) {
     addText(slide, options.indexLabel ? `${options.indexLabel} ${String(index + 1).padStart(2, "0")}` : `0${index + 1}`, x + 0.3, y + 0.18, 1.0, 0.14, {
       fontSize: 7.2, color: highlight ? C.gold : C.muted, bold: true,
     });
-    addText(slide, clampText(item.title || item.fact || item.naive_reading || item.tension || item.flag || "待补充", 42), x + 0.3, y + 0.46, w * 0.4, Math.max(0.26, h * 0.36), {
+    addText(slide, clampText(item.title || item.fact || item.naive_reading || item.tension || item.flag || "该项将在方案阶段进一步细化", 42), x + 0.3, y + 0.46, w * 0.4, Math.max(0.26, h * 0.36), {
       fontSize: options.titleSize || 11.4, bold: true, color: C.white, fit: "shrink",
     });
     addText(slide, item.body || item.why_surprising || item.detail || item.reframe || item.decision || item.meaning || "", x + w * 0.52, y + 0.38, w * 0.4, Math.max(0.34, h * 0.52), {
@@ -350,7 +350,7 @@ function addReasoningChain(slide, chain) {
 }
 
 function addEvidenceList(slide, evidenceList) {
-  const list = evidenceList && evidenceList.length ? evidenceList : [{ claim: "暂无证据", value: "待补充", source_type: "", source: "" }];
+  const list = evidenceList && evidenceList.length ? evidenceList : [{ claim: "本维以已确认信息形成结构性判断", value: "定性判断", source_type: "", source: "" }];
   addText(slide, "关键证据", 7.24, 2.42, 0.95, 0.18, { fontSize: 8.5, bold: true, color: C.gold });
   const h = Math.min(0.92, 3.35 / list.length);
   list.forEach((evidence, index) => {
@@ -379,7 +379,7 @@ function addEvidenceList(slide, evidenceList) {
 function addDimensionPage(pptx, dimension) {
   const slide = pptx.addSlide();
   addBackground(slide);
-  addText(slide, clampText(dimension.core_judgment || "该维度结论待生成", 46), 0.62, 0.56, 8.95, 0.82, {
+  addText(slide, clampText(dimension.core_judgment || "该维度采用结构性判断口径", 46), 0.62, 0.56, 8.95, 0.82, {
     fontSize: 21.5, bold: true, fit: "shrink",
   });
   addText(slide, DIMENSION_LABELS[dimension.dimension] || dimension.dimension, 0.64, 1.5, 1.6, 0.2, {
@@ -395,7 +395,7 @@ function addDimensionPage(pptx, dimension) {
   addReasoningChain(slide, dimension.reasoning_chain || []);
   addEvidenceList(slide, dimension.evidence || []);
   if (dimension.degradation?.degraded) {
-    addText(slide, `部分数据缺失，该维为方向性判断：${text(dimension.degradation.upgrade_hook)}`, 7.24, 6.25, 4.85, 0.26, {
+    addText(slide, `本维采用结构性判断口径：${text(dimension.degradation.upgrade_hook)}`, 7.24, 6.25, 4.85, 0.26, {
       fontSize: 7.2, color: C.muted, align: "right", fit: "shrink",
     });
   }

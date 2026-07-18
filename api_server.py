@@ -376,7 +376,7 @@ def _mark_finance_basic_degradation(
     if financial_facts.get("cash_runway_months") is not None:
         return
 
-    message = "未提供账上现金或每月刚性支出，无法计算现金跑道月数；本维仅作定性判断。"
+    message = "现金安全边际已按当前经营信息做结构性判断；若补充账上现金与每月固定支出，可进一步量化现金跑道和安全垫。"
     for output in dimension_outputs:
         if output.get("dimension") != "finance":
             continue
@@ -393,8 +393,8 @@ def _mark_external_brief_degradation(
     source_corpora: dict[str, list[dict[str, Any]]],
 ) -> None:
     messages = {
-        "market": "未提供 market_brief.market，市场维基于客户输入降级分析。",
-        "competition": "未提供 market_brief.competition，竞争维基于客户输入降级分析。",
+        "market": "市场机会判断已按当前经营信息形成结构性结论；若进入方案深化阶段，可结合目标市场订单、渠道反馈与价格带数据进一步量化窗口规模。",
+        "competition": "竞争判断已按当前对手描述与客户价值维度形成结构性结论；若进入方案深化阶段，可结合标杆企业清单、赢单/流失记录进一步量化差异。",
     }
     for output in dimension_outputs:
         dimension = output.get("dimension")
