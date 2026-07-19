@@ -132,6 +132,11 @@ def _run_diagnosis(
         ]
     _mark_external_brief_degradation(dimension_outputs, source_corpora)
     _mark_finance_basic_degradation(dimension_outputs, financial_facts)
+    data_quality = _build_data_quality(
+        dimension_outputs,
+        source_corpora,
+        financial_facts,
+    )
 
     score_summary = calculate_overall_score(dimension_outputs)
     synthesis_output = _run_synthesis_with_retry(
@@ -146,6 +151,7 @@ def _run_diagnosis(
         "dimension_outputs": dimension_outputs,
         "synthesis_output": synthesis_output,
         "score_summary": score_summary,
+        "data_quality": data_quality,
     }
 
 
@@ -386,6 +392,67 @@ def _mark_finance_basic_degradation(
         degradation["upgrade_hook"] = " ".join(
             part for part in (existing_hook, message) if part
         )
+
+
+DATA_QUALITY_SUMMARIES = {
+    "full": "当前五个维度均有足够信息支撑判断；如需进一步精细化，可在方案深化阶段补充更细颗粒度经营数据。",
+    "partial": "当前报告已形成五维判断，部分维度可在方案深化阶段结合补充数据进一步量化。",
+    "limited": "当前报告以结构性判断为主，部分维度可在方案深化阶段结合经营与市场数据进一步量化。",
+}
+
+
+def _build_data_quality(
+    dimension_outputs: list[dict[str, Any]],
+    source_corpora: dict[str, list[dict[str, Any]]],
+    financial_facts: dict[str, Any],
+) -> dict[str, Any]:
+    outputs_by_dimension = {
+        output.get("dimension"): output
+        for output in dimension_outputs
+    }
+    dimensions: list[dict[str, Any]] = []
+
+    for dimension in DIMENSIONS:
+        output = outputs_by_dimension.get(dimension, {})
+        degradation = output.get("degradation") or {}
+        degraded = degradation.get("degraded") is True
+        missing_plus = degradation.get("missing_plus")
+        upgrade_hook = degradation.get("upgrade_hook")
+
+        if dimension in {"market", "competition"} and not source_corpora.get(dimension):
+            level = "limited"
+        elif dimension == "finance" and (
+            financial_facts.get("tier") == "basic_only"
+            or financial_facts.get("cash_runway_months") is None
+        ):
+            level = "limited"
+        elif degraded:
+            level = "partial"
+        else:
+            level = "full"
+
+        dimensions.append(
+            {
+                "dimension": dimension,
+                "level": level,
+                "missing_plus": list(missing_plus) if isinstance(missing_plus, list) else [],
+                "upgrade_hook": upgrade_hook if isinstance(upgrade_hook, str) else "",
+            }
+        )
+
+    levels = [item["level"] for item in dimensions]
+    if "limited" in levels:
+        overall_level = "limited"
+    elif "partial" in levels:
+        overall_level = "partial"
+    else:
+        overall_level = "full"
+
+    return {
+        "overall_level": overall_level,
+        "summary": DATA_QUALITY_SUMMARIES[overall_level],
+        "dimensions": dimensions,
+    }
 
 
 def _mark_external_brief_degradation(

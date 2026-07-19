@@ -140,18 +140,20 @@ def _check_brainmade_external_numbers(
             source_type = evidence.get("source_type")
             if source_type not in EXTERNAL_SOURCE_TYPES:
                 continue
-            value = str(evidence.get("value", ""))
-            if not _contains_number(value):
-                continue
-            source = evidence.get("source")
-            normalized_sources = _split_external_sources(source)
-            if not normalized_sources or any(item not in allowed_sources for item in normalized_sources):
-                _add_failure(
-                    failures,
-                    "brainmade_external_number",
-                    f"dimensions[{dim_index}].evidence[{evidence_index}].source",
-                    f"external numeric evidence source {source!r} is not in {dimension} source_corpus",
-                )
+            for field in ("value", "benchmark"):
+                value = str(evidence.get(field, ""))
+                if not _contains_number(value):
+                    continue
+                source = evidence.get("source")
+                normalized_sources = _split_external_sources(source)
+                if not normalized_sources or any(item not in allowed_sources for item in normalized_sources):
+                    field_label = " benchmark" if field == "benchmark" else ""
+                    _add_failure(
+                        failures,
+                        "brainmade_external_number",
+                        f"dimensions[{dim_index}].evidence[{evidence_index}].source",
+                        f"external numeric evidence{field_label} source {source!r} is not in {dimension} source_corpus",
+                    )
 
 
 def _check_bare_numbers(
@@ -235,20 +237,21 @@ def _check_computed_financial_consistency(
             if direct_values is None:
                 continue
 
-            mentions = _extract_numeric_mentions(str(evidence.get("value", "")))
-            for mention in mentions:
-                if not any(_matches_financial_value(mention, value) for value in direct_values):
-                    evidence["source_type"] = "inferred"
-                    _add_warning(
-                        warnings,
-                        "computed_financial_consistency",
-                        f"dimensions[{dim_index}].evidence[{evidence_index}].value",
-                        (
-                            f"computed financial number {mention['raw']!r} does not match "
-                            f"financial_facts values referenced by {source!r}; "
-                            "source_type downgraded to inferred for manual review"
-                        ),
-                    )
+            for field in ("value", "benchmark"):
+                mentions = _extract_numeric_mentions(str(evidence.get(field, "")))
+                for mention in mentions:
+                    if not any(_matches_financial_value(mention, value) for value in direct_values):
+                        evidence["source_type"] = "inferred"
+                        _add_warning(
+                            warnings,
+                            "computed_financial_consistency",
+                            f"dimensions[{dim_index}].evidence[{evidence_index}].{field}",
+                            (
+                                f"computed financial number {mention['raw']!r} does not match "
+                                f"financial_facts values referenced by {source!r}; "
+                                "source_type downgraded to inferred for manual review"
+                            ),
+                        )
 
 
 def _check_product_loss_claim_consistency(

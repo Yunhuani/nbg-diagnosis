@@ -15,6 +15,78 @@ def _dimension_output(dimension):
     }
 
 
+def test_build_data_quality_classifies_dimension_and_overall_levels():
+    outputs = [
+        _dimension_output("market"),
+        _dimension_output("competition"),
+        _dimension_output("business_model"),
+        _dimension_output("capability"),
+        _dimension_output("finance"),
+    ]
+
+    outputs[0]["degradation"] = {
+        "degraded": True,
+        "missing_plus": [],
+        "upgrade_hook": "可在方案深化阶段进一步量化市场窗口",
+    }
+    outputs[2]["degradation"] = {
+        "degraded": True,
+        "missing_plus": ["business_model.revenue_mix"],
+        "upgrade_hook": "补充收入结构后可进一步量化",
+    }
+
+    result = api_server._build_data_quality(
+        outputs,
+        {"market": [], "competition": [{"claim": "公开事实"}]},
+        {"tier": "full", "cash_runway_months": 6},
+    )
+
+    assert result["overall_level"] == "limited"
+    assert [item["level"] for item in result["dimensions"]] == [
+        "limited",
+        "full",
+        "partial",
+        "full",
+        "full",
+    ]
+    assert result["dimensions"][2]["missing_plus"] == ["business_model.revenue_mix"]
+    assert result["dimensions"][2]["upgrade_hook"] == "补充收入结构后可进一步量化"
+
+
+def test_build_data_quality_marks_basic_finance_as_limited_and_all_full_as_full():
+    outputs = [
+        _dimension_output(dimension)
+        for dimension in (
+            "market",
+            "competition",
+            "business_model",
+            "capability",
+            "finance",
+        )
+    ]
+
+    full_result = api_server._build_data_quality(
+        outputs,
+        {"market": [{"claim": "市场事实"}], "competition": [{"claim": "竞争事实"}]},
+        {"tier": "full", "cash_runway_months": 6},
+    )
+    assert full_result["overall_level"] == "full"
+    assert all(item["level"] == "full" for item in full_result["dimensions"])
+
+    outputs[-1]["degradation"] = {
+        "degraded": True,
+        "missing_plus": ["finance.product_lines"],
+        "upgrade_hook": "补充产品线明细后可进一步量化",
+    }
+    limited_result = api_server._build_data_quality(
+        outputs,
+        {"market": [{"claim": "市场事实"}], "competition": [{"claim": "竞争事实"}]},
+        {"tier": "basic_only", "cash_runway_months": None},
+    )
+    assert limited_result["overall_level"] == "limited"
+    assert limited_result["dimensions"][-1]["level"] == "limited"
+
+
 def test_calculate_financial_facts_accepts_null_cash_and_monthly_fixed():
     facts = api_server._calculate_financial_facts(
         {

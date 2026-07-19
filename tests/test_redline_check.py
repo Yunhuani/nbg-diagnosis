@@ -412,6 +412,20 @@ def test_redline_check_catches_brainmade_external_number():
     assert "brainmade_external_number" in _checks(report)
 
 
+def test_redline_check_catches_brainmade_external_number_in_benchmark():
+    dimensions = _clean_dimension_outputs()
+    evidence = dimensions[0]["evidence"][0]
+    evidence["value"] = "市场增长趋势"
+    evidence["benchmark"] = "市场规模约300亿元"
+    evidence["source_type"] = "verified"
+    evidence["source"] = "made-up-source.example"
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is False
+    assert "brainmade_external_number" in _checks(report)
+
+
 def test_redline_check_warns_and_downgrades_rewritten_financial_number():
     dimensions = _clean_dimension_outputs()
     evidence = dimensions[2]["evidence"][0]
