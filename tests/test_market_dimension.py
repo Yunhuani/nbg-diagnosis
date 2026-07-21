@@ -39,8 +39,8 @@ def test_market_prompt_forbids_unsupported_opportunities_without_source_corpus()
 def _yonghui_fact_base():
     financial_facts = calculate_financial_facts(
         product_lines=[
-            {"name": "淋浴隔断五金", "revenue": 6800, "direct_cost": 4760, "allocated": 880},
-            {"name": "法兰/排水配件", "revenue": 4200, "direct_cost": 3990, "allocated": 620},
+            {"name": "淋浴隔断五金", "revenue": 6800, "total_cost": 5640},
+            {"name": "法兰/排水配件", "revenue": 4200, "total_cost": 4610},
         ],
         customers=[
             {"name": "北美A", "pct": 35},

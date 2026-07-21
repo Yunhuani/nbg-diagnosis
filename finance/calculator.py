@@ -47,24 +47,19 @@ def _calculate_product_lines(
         return None
 
     total_revenue = sum(float(line["revenue"]) for line in product_lines)
-    return [
-        {
+    facts = []
+    for line in product_lines:
+        revenue = float(line["revenue"])
+        full_cost_net = revenue - float(line["total_cost"])
+        facts.append({
             "name": line["name"],
-            "full_cost_net": float(line["revenue"])
-            - float(line["direct_cost"])
-            - float(line["allocated"]),
-            "revenue": float(line["revenue"]),
-            "revenue_share": round(float(line["revenue"]) / total_revenue, 3),
+            "full_cost_net": full_cost_net,
+            "revenue": revenue,
+            "revenue_share": round(revenue / total_revenue, 3),
             "unit": "万元",
-            "is_loss": (
-                float(line["revenue"])
-                - float(line["direct_cost"])
-                - float(line["allocated"])
-            )
-            < 0,
-        }
-        for line in product_lines
-    ]
+            "is_loss": full_cost_net < 0,
+        })
+    return facts
 
 
 def _calculate_customer_concentration(

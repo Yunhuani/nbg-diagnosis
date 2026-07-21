@@ -4,11 +4,11 @@ from finance import calculate_financial_facts
 def test_calculate_financial_facts_for_sample_case():
     facts = calculate_financial_facts(
         product_lines=[
-            {"name": "淋浴隔断五金", "revenue": 6800, "direct_cost": 4760, "allocated": 880},
-            {"name": "法兰/排水配件", "revenue": 4200, "direct_cost": 3990, "allocated": 620},
-            {"name": "浴室置物架", "revenue": 3500, "direct_cost": 2380, "allocated": 450},
-            {"name": "龙头配件", "revenue": 2600, "direct_cost": 1742, "allocated": 340},
-            {"name": "定制小单/杂项", "revenue": 1500, "direct_cost": 1155, "allocated": 210},
+            {"name": "淋浴隔断五金", "revenue": 6800, "total_cost": 5640},
+            {"name": "法兰/排水配件", "revenue": 4200, "total_cost": 4610},
+            {"name": "浴室置物架", "revenue": 3500, "total_cost": 2830},
+            {"name": "龙头配件", "revenue": 2600, "total_cost": 2082},
+            {"name": "定制小单/杂项", "revenue": 1500, "total_cost": 1365},
         ],
         customers=[
             {"name": "北美A", "pct": 35},
@@ -44,11 +44,11 @@ def test_calculate_financial_facts_for_sample_case():
 def test_calculate_financial_facts_caps_ar_release_at_zero_when_days_under_60():
     facts = calculate_financial_facts(
         product_lines=[
-            {"name": "高速电吹风", "revenue": 8000, "direct_cost": 4000, "allocated": 2200},
-            {"name": "洁面仪", "revenue": 4500, "direct_cost": 2000, "allocated": 1500},
-            {"name": "美容仪", "revenue": 3500, "direct_cost": 1400, "allocated": 1500},
-            {"name": "配套耗材", "revenue": 2000, "direct_cost": 600, "allocated": 400},
-            {"name": "联名礼盒", "revenue": 1200, "direct_cost": 700, "allocated": 300},
+            {"name": "高速电吹风", "revenue": 8000, "total_cost": 6200},
+            {"name": "洁面仪", "revenue": 4500, "total_cost": 3500},
+            {"name": "美容仪", "revenue": 3500, "total_cost": 2900},
+            {"name": "配套耗材", "revenue": 2000, "total_cost": 1000},
+            {"name": "联名礼盒", "revenue": 1200, "total_cost": 1000},
         ],
         customers=[
             {"name": "经销商A", "pct": 2.5},
