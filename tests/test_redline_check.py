@@ -426,6 +426,63 @@ def test_redline_check_catches_brainmade_external_number_in_benchmark():
     assert "brainmade_external_number" in _checks(report)
 
 
+def test_redline_check_allows_market_computed_financial_number():
+    dimensions = _clean_dimension_outputs()
+    dimensions[0]["evidence"][0] = _evidence(
+        "现金跑道佐证市场机会适配",
+        "1.6个月",
+        "computed",
+        "financial_facts.cash_runway_months",
+    )
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is True
+
+
+def test_financial_source_mislabelled_as_inferred_skips_external_number_check():
+    dimensions = _clean_dimension_outputs()
+    dimensions[0]["evidence"][0] = _evidence(
+        "现金跑道佐证市场机会适配",
+        "1.6个月",
+        "inferred",
+        "financial_facts.cash_runway_months",
+    )
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert "brainmade_external_number" not in _checks(report)
+
+
+def test_financial_source_mislabelled_as_inferred_fails_source_type_mapping():
+    dimensions = _clean_dimension_outputs()
+    dimensions[0]["evidence"][0] = _evidence(
+        "现金跑道佐证市场机会适配",
+        "1.6个月",
+        "inferred",
+        "financial_facts.cash_runway_months",
+    )
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is False
+    assert "evidence_source_type_mapping" in _checks(report)
+
+
+def test_external_fake_url_with_numeric_benchmark_still_fails_redline():
+    dimensions = _clean_dimension_outputs()
+    evidence = dimensions[0]["evidence"][0]
+    evidence["value"] = "市场增长趋势"
+    evidence["benchmark"] = "市场规模约300亿元"
+    evidence["source_type"] = "verified"
+    evidence["source"] = "made-up-source.example"
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is False
+    assert "brainmade_external_number" in _checks(report)
+
+
 def test_redline_check_warns_and_downgrades_rewritten_financial_number():
     dimensions = _clean_dimension_outputs()
     evidence = dimensions[2]["evidence"][0]

@@ -140,11 +140,14 @@ def _check_brainmade_external_numbers(
             source_type = evidence.get("source_type")
             if source_type not in EXTERNAL_SOURCE_TYPES:
                 continue
+            source = evidence.get("source")
+            source_text = str(source or "").strip()
+            if source_text.startswith(("financial_facts.", "diagnosis_intake.")):
+                continue
             for field in ("value", "benchmark"):
                 value = str(evidence.get(field, ""))
                 if not _contains_number(value):
                     continue
-                source = evidence.get("source")
                 normalized_sources = _split_external_sources(source)
                 if not normalized_sources or any(item not in allowed_sources for item in normalized_sources):
                     field_label = " benchmark" if field == "benchmark" else ""
@@ -187,6 +190,16 @@ def _check_evidence_source_type_mapping(
         for evidence_index, evidence in enumerate(dim.get("evidence", [])):
             source_type = evidence.get("source_type")
             source = str(evidence.get("source", ""))
+            if source.startswith("financial_facts.") and source_type != "computed":
+                _add_failure(
+                    failures,
+                    "evidence_source_type_mapping",
+                    f"dimensions[{dim_index}].evidence[{evidence_index}].source_type",
+                    (
+                        "financial_facts evidence must be marked computed, "
+                        f"got {source_type!r}"
+                    ),
+                )
             if source_type == "computed" and not source.startswith("financial_facts"):
                 _add_failure(
                     failures,
