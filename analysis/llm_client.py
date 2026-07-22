@@ -13,8 +13,13 @@ from urllib import error, request
 
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
-DEFAULT_MODEL = "deepseek-chat"
+DEFAULT_MODEL = "deepseek-v4-flash"
+DEFAULT_MAX_TOKENS = 8192
 logger = logging.getLogger(__name__)
+
+
+class DeepSeekResponseError(RuntimeError):
+    """Raised when DeepSeek returns an unusable completion response."""
 
 
 def call_deepseek_json(
@@ -25,6 +30,7 @@ def call_deepseek_json(
     env_path: str | Path = ".env",
     base_url: str | None = None,
     timeout: int = 60,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
     max_attempts: int = 3,
     retry_backoff_seconds: float = 0.5,
 ) -> dict[str, Any]:
@@ -54,7 +60,9 @@ def call_deepseek_json(
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0.2,
+        "thinking": {"type": "disabled"},
         "response_format": {"type": "json_object"},
+        "max_tokens": max_tokens,
     }
     body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = request.Request(
@@ -67,12 +75,11 @@ def call_deepseek_json(
         method="POST",
     )
 
-    response_body: bytes | None = None
     for attempt in range(1, max_attempts + 1):
         try:
             with request.urlopen(req, timeout=timeout) as response:
                 response_body = response.read()
-            break
+            return _parse_response_body(response_body)
         except error.HTTPError as exc:
             if exc.code < 500 or attempt == max_attempts:
                 logger.error(
@@ -109,15 +116,48 @@ def call_deepseek_json(
                 max_attempts,
                 exc,
             )
+        except DeepSeekResponseError as exc:
+            if attempt == max_attempts:
+                logger.error(
+                    "DeepSeek returned an unusable response after %s attempts: %s",
+                    max_attempts,
+                    exc,
+                )
+                raise
+            logger.warning(
+                "DeepSeek response retry %s/%s: %s",
+                attempt,
+                max_attempts,
+                exc,
+            )
 
         if retry_backoff_seconds > 0:
             time.sleep(retry_backoff_seconds * attempt)
 
-    assert response_body is not None
-    data = json.loads(response_body.decode("utf-8"))
+    raise RuntimeError("DeepSeek request exhausted without a response")
 
-    content = data["choices"][0]["message"]["content"]
-    return _parse_json_content(content)
+
+def _parse_response_body(response_body: bytes) -> dict[str, Any]:
+    try:
+        data = json.loads(response_body.decode("utf-8"))
+        choice = data["choices"][0]
+        message = choice["message"]
+    except (UnicodeDecodeError, json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
+        raise DeepSeekResponseError("DeepSeek response envelope is invalid") from exc
+
+    if choice.get("finish_reason") == "length":
+        raise DeepSeekResponseError("DeepSeek completion was truncated")
+
+    content = message.get("content")
+    if not isinstance(content, str) or not content.strip():
+        raise DeepSeekResponseError("DeepSeek completion content is empty")
+
+    try:
+        return _parse_json_content(content)
+    except json.JSONDecodeError as exc:
+        raise DeepSeekResponseError(
+            "DeepSeek completion content is not valid JSON"
+        ) from exc
 
 
 def _load_dotenv(env_path: str | Path) -> dict[str, str]:
