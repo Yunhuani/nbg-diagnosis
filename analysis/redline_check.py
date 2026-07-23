@@ -72,7 +72,12 @@ def run_redline_check(
     _check_brainmade_external_numbers(dimension_outputs, source_corpora, failures)
     _check_bare_numbers(dimension_outputs, failures)
     _check_evidence_source_type_mapping(dimension_outputs, failures)
-    _check_computed_financial_consistency(dimension_outputs, financial_facts, warnings)
+    _check_computed_financial_consistency(
+        dimension_outputs,
+        financial_facts,
+        failures,
+        warnings,
+    )
     _check_product_loss_claim_consistency(dimension_outputs, financial_facts, failures)
     _check_degradation_missing_plus(dimension_outputs, availability_map, failures)
     _check_reasoning_chain_source_leaks(dimension_outputs, failures)
@@ -222,6 +227,7 @@ def _check_evidence_source_type_mapping(
 def _check_computed_financial_consistency(
     dimension_outputs: list[dict[str, Any]],
     financial_facts: dict[str, Any],
+    failures: list[dict[str, str]],
     warnings: list[dict[str, str]],
 ) -> None:
     for dim_index, dim in enumerate(dimension_outputs):
@@ -254,15 +260,13 @@ def _check_computed_financial_consistency(
                 mentions = _extract_numeric_mentions(str(evidence.get(field, "")))
                 for mention in mentions:
                     if not any(_matches_financial_value(mention, value) for value in direct_values):
-                        evidence["source_type"] = "inferred"
-                        _add_warning(
-                            warnings,
+                        _add_failure(
+                            failures,
                             "computed_financial_consistency",
                             f"dimensions[{dim_index}].evidence[{evidence_index}].{field}",
                             (
                                 f"computed financial number {mention['raw']!r} does not match "
-                                f"financial_facts values referenced by {source!r}; "
-                                "source_type downgraded to inferred for manual review"
+                                f"financial_facts values referenced by {source!r}"
                             ),
                         )
 

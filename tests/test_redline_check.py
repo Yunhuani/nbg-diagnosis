@@ -440,6 +440,39 @@ def test_redline_check_allows_market_computed_financial_number():
     assert report["passed"] is True
 
 
+def test_redline_check_allows_matching_computed_financial_benchmark():
+    dimensions = _clean_dimension_outputs()
+    dimensions[4]["evidence"][0] = _evidence(
+        "现金跑道与财务事实一致",
+        "现金跑道偏紧",
+        "computed",
+        "financial_facts.cash_runway_months",
+        "实际现金跑道1.6个月",
+    )
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is True
+    assert report["warnings"] == []
+
+
+def test_redline_check_rejects_fabricated_computed_financial_benchmark():
+    dimensions = _clean_dimension_outputs()
+    dimensions[4]["evidence"][0] = _evidence(
+        "现金跑道与财务事实不一致",
+        "现金跑道偏紧",
+        "computed",
+        "financial_facts.cash_runway_months",
+        "实际现金跑道999个月",
+    )
+
+    report = _run(dimensions, _clean_synthesis())
+
+    assert report["passed"] is False
+    assert "computed_financial_consistency" in _checks(report)
+    assert report["warnings"] == []
+
+
 def test_financial_source_mislabelled_as_inferred_skips_external_number_check():
     dimensions = _clean_dimension_outputs()
     dimensions[0]["evidence"][0] = _evidence(
@@ -483,7 +516,7 @@ def test_external_fake_url_with_numeric_benchmark_still_fails_redline():
     assert "brainmade_external_number" in _checks(report)
 
 
-def test_redline_check_warns_and_downgrades_rewritten_financial_number():
+def test_redline_check_rejects_rewritten_financial_number():
     dimensions = _clean_dimension_outputs()
     evidence = dimensions[2]["evidence"][0]
     evidence["value"] = "亏400万"
@@ -491,10 +524,10 @@ def test_redline_check_warns_and_downgrades_rewritten_financial_number():
 
     report = _run(dimensions, _clean_synthesis())
 
-    assert report["passed"] is True
-    assert "computed_financial_consistency" not in _checks(report)
-    assert report["warnings"][0]["check"] == "computed_financial_consistency"
-    assert evidence["source_type"] == "inferred"
+    assert report["passed"] is False
+    assert "computed_financial_consistency" in _checks(report)
+    assert report["warnings"] == []
+    assert evidence["source_type"] == "computed"
 
 
 def test_redline_check_allows_derived_financial_values_from_object_source():
@@ -522,6 +555,7 @@ def test_redline_check_allows_derived_financial_values_from_object_source():
     )
 
     assert report["passed"] is True
+    assert report["warnings"] == []
 
 
 def test_redline_check_skips_diagnosis_intake_paths_in_computed_financial_source():
@@ -551,7 +585,7 @@ def test_redline_check_skips_diagnosis_intake_paths_in_computed_financial_source
     assert report["passed"] is True
 
 
-def test_redline_check_warns_and_downgrades_market_percent_mislabelled_as_computed():
+def test_redline_check_rejects_market_percent_mislabelled_as_computed():
     dimensions = _clean_dimension_outputs()
     evidence = _evidence(
         "市场机会错误标注为财务计算值",
@@ -563,10 +597,10 @@ def test_redline_check_warns_and_downgrades_market_percent_mislabelled_as_comput
 
     report = _run(dimensions, _clean_synthesis())
 
-    assert report["passed"] is True
-    assert "computed_financial_consistency" not in _checks(report)
-    assert report["warnings"][0]["check"] == "computed_financial_consistency"
-    assert evidence["source_type"] == "inferred"
+    assert report["passed"] is False
+    assert "computed_financial_consistency" in _checks(report)
+    assert report["warnings"] == []
+    assert evidence["source_type"] == "computed"
 
 
 def test_redline_check_catches_bare_number_in_evidence_benchmark():
