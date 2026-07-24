@@ -13,7 +13,7 @@ from urllib import error, request
 
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
-DEFAULT_MODEL = "deepseek-v4-flash"
+DEFAULT_MODEL = "deepseek-v4-pro"
 DEFAULT_MAX_TOKENS = 8192
 logger = logging.getLogger(__name__)
 

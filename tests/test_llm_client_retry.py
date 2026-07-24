@@ -42,7 +42,7 @@ def _completion_payload(
     ).encode("utf-8")
 
 
-def test_call_deepseek_json_uses_v4_flash_non_thinking_json_payload(
+def test_call_deepseek_json_uses_v4_pro_non_thinking_json_payload(
     monkeypatch,
     tmp_path,
 ):
@@ -64,7 +64,7 @@ def test_call_deepseek_json_uses_v4_flash_non_thinking_json_payload(
     )
 
     assert result == {"ok": True}
-    assert captured_payload["model"] == "deepseek-v4-flash"
+    assert captured_payload["model"] == "deepseek-v4-pro"
     assert captured_payload["thinking"] == {"type": "disabled"}
     assert captured_payload["response_format"] == {"type": "json_object"}
     assert captured_payload["max_tokens"] == 8192
