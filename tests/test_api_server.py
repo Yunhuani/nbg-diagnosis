@@ -27,17 +27,17 @@ def test_build_data_quality_classifies_dimension_and_overall_levels():
     outputs[0]["degradation"] = {
         "degraded": True,
         "missing_plus": [],
-        "upgrade_hook": "¿ÉÔÚ·½°¸Éî»¯½×¶Î½øÒ»²½Á¿»¯ÊĞ³¡´°¿Ú",
+        "upgrade_hook": "å¯åœ¨æ–¹æ¡ˆæ·±åŒ–é˜¶æ®µè¿›ä¸€æ­¥é‡åŒ–å¸‚åœºçª—å£",
     }
     outputs[2]["degradation"] = {
         "degraded": True,
         "missing_plus": ["business_model.revenue_mix"],
-        "upgrade_hook": "²¹³äÊÕÈë½á¹¹ºó¿É½øÒ»²½Á¿»¯",
+        "upgrade_hook": "è¡¥å……æ”¶å…¥ç»“æ„åå¯è¿›ä¸€æ­¥é‡åŒ–",
     }
 
     result = api_server._build_data_quality(
         outputs,
-        {"market": [], "competition": [{"claim": "¹«¿ªÊÂÊµ"}]},
+        {"market": [], "competition": [{"claim": "å…¬å¼€äº‹å®"}]},
         {"tier": "full", "cash_runway_months": 6},
     )
 
@@ -50,7 +50,7 @@ def test_build_data_quality_classifies_dimension_and_overall_levels():
         "full",
     ]
     assert result["dimensions"][2]["missing_plus"] == ["business_model.revenue_mix"]
-    assert result["dimensions"][2]["upgrade_hook"] == "²¹³äÊÕÈë½á¹¹ºó¿É½øÒ»²½Á¿»¯"
+    assert result["dimensions"][2]["upgrade_hook"] == "è¡¥å……æ”¶å…¥ç»“æ„åå¯è¿›ä¸€æ­¥é‡åŒ–"
 
 
 def test_build_data_quality_marks_basic_finance_as_limited_and_all_full_as_full():
@@ -67,7 +67,7 @@ def test_build_data_quality_marks_basic_finance_as_limited_and_all_full_as_full(
 
     full_result = api_server._build_data_quality(
         outputs,
-        {"market": [{"claim": "ÊĞ³¡ÊÂÊµ"}], "competition": [{"claim": "¾ºÕùÊÂÊµ"}]},
+        {"market": [{"claim": "å¸‚åœºäº‹å®"}], "competition": [{"claim": "ç«äº‰äº‹å®"}]},
         {"tier": "full", "cash_runway_months": 6},
     )
     assert full_result["overall_level"] == "full"
@@ -76,11 +76,11 @@ def test_build_data_quality_marks_basic_finance_as_limited_and_all_full_as_full(
     outputs[-1]["degradation"] = {
         "degraded": True,
         "missing_plus": ["finance.product_lines"],
-        "upgrade_hook": "²¹³ä²úÆ·ÏßÃ÷Ï¸ºó¿É½øÒ»²½Á¿»¯",
+        "upgrade_hook": "è¡¥å……äº§å“çº¿æ˜ç»†åå¯è¿›ä¸€æ­¥é‡åŒ–",
     }
     limited_result = api_server._build_data_quality(
         outputs,
-        {"market": [{"claim": "ÊĞ³¡ÊÂÊµ"}], "competition": [{"claim": "¾ºÕùÊÂÊµ"}]},
+        {"market": [{"claim": "å¸‚åœºäº‹å®"}], "competition": [{"claim": "ç«äº‰äº‹å®"}]},
         {"tier": "basic_only", "cash_runway_months": None},
     )
     assert limited_result["overall_level"] == "limited"
@@ -165,6 +165,8 @@ def test_run_diagnosis_completes_and_marks_finance_degraded_for_null_basic_finan
         in finance_output["degradation"]["upgrade_hook"]
     )
     assert "è¿›ä¸€æ­¥é‡åŒ–ç°é‡‘è·‘é“å’Œå®‰å…¨å«" in finance_output["degradation"]["upgrade_hook"]
+    assert result["data_quality"]["overall_level"] == "limited"
+    assert len(result["data_quality"]["dimensions"]) == 5
 
 
 def test_run_diagnosis_executes_five_dimensions_in_parallel_and_preserves_order(
