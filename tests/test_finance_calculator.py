@@ -38,6 +38,12 @@ def test_calculate_financial_facts_for_sample_case():
     ]
     assert facts["customer_concentration"]["top3_pct"] == 65.0
     assert facts["cash_runway_months"] == 1.6
+    assert facts["cash_position"] == {
+        "cash": 1180.0,
+        "monthly_fixed": 720.0,
+        "runway_months": 1.6,
+        "unit": "万元",
+    }
     assert facts["ar"]["releasable_at_60days"] == 1892
 
 
@@ -83,3 +89,4 @@ def test_calculate_financial_facts_omits_cash_runway_when_basic_inputs_are_missi
 
     assert facts["tier"] == "basic_only"
     assert facts["cash_runway_months"] is None
+    assert facts["cash_position"] is None

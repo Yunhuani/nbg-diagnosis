@@ -13,11 +13,13 @@ def calculate_financial_facts(
     ar_days: float | None = None,
 ) -> dict[str, Any]:
     """Calculate deterministic financial facts in RMB 10k units."""
+    cash_runway_months = _calculate_cash_runway(cash, monthly_fixed)
     facts: dict[str, Any] = {
         "tier": "full",
         "product_lines": _calculate_product_lines(product_lines),
         "customer_concentration": _calculate_customer_concentration(customers),
-        "cash_runway_months": _calculate_cash_runway(cash, monthly_fixed),
+        "cash_runway_months": cash_runway_months,
+        "cash_position": _calculate_cash_position(cash, monthly_fixed, cash_runway_months),
         "ar": _calculate_ar(ar_balance, ar_days),
     }
 
@@ -38,6 +40,21 @@ def _calculate_cash_runway(
     if cash is None or monthly_fixed is None:
         return None
     return round(cash / monthly_fixed, 1)
+
+
+def _calculate_cash_position(
+    cash: float | None,
+    monthly_fixed: float | None,
+    runway_months: float | None,
+) -> dict[str, Any] | None:
+    if cash is None or monthly_fixed is None:
+        return None
+    return {
+        "cash": float(cash),
+        "monthly_fixed": float(monthly_fixed),
+        "runway_months": runway_months,
+        "unit": "万元",
+    }
 
 
 def _calculate_product_lines(

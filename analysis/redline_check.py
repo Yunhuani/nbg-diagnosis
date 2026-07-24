@@ -256,7 +256,7 @@ def _check_computed_financial_consistency(
             if direct_values is None:
                 continue
 
-            for field in ("value", "benchmark"):
+            for field in ("value",):
                 mentions = _extract_numeric_mentions(str(evidence.get(field, "")))
                 for mention in mentions:
                     if not any(_matches_financial_value(mention, value) for value in direct_values):

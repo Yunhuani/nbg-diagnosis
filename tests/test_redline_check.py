@@ -456,22 +456,21 @@ def test_redline_check_allows_matching_computed_financial_benchmark():
     assert report["warnings"] == []
 
 
-def test_redline_check_rejects_fabricated_computed_financial_benchmark():
+def test_redline_check_ignores_computed_financial_benchmark_numbers():
     dimensions = _clean_dimension_outputs()
     dimensions[4]["evidence"][0] = _evidence(
-        "现金跑道与财务事实不一致",
-        "现金跑道偏紧",
+        "现金跑道与财务事实一致",
+        "1.6个月",
         "computed",
         "financial_facts.cash_runway_months",
-        "实际现金跑道999个月",
+        "行业安全基准通常看6个月以上",
     )
 
     report = _run(dimensions, _clean_synthesis())
 
-    assert report["passed"] is False
-    assert "computed_financial_consistency" in _checks(report)
+    assert report["passed"] is True
+    assert "computed_financial_consistency" not in _checks(report)
     assert report["warnings"] == []
-
 
 def test_financial_source_mislabelled_as_inferred_skips_external_number_check():
     dimensions = _clean_dimension_outputs()

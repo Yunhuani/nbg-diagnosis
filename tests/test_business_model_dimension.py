@@ -46,6 +46,9 @@ def test_business_model_dimension_returns_required_schema():
         assert "商业模式画布" in user_prompt
         assert "【产品线盈亏事实,代码计算,只能引用不得推翻】" in user_prompt
         assert "淋浴隔断五金=盈利" in user_prompt
+        assert "financial_facts.cash_position.cash" in user_prompt
+        assert "financial_facts.cash_position.monthly_fixed" in user_prompt
+        assert "financial_facts.cash_runway_months" in user_prompt
         assert "法兰/排水配件=亏损" in user_prompt
         assert "浴室置物架=盈利" in user_prompt
         assert "龙头配件=盈利" in user_prompt
