@@ -1,0 +1,88 @@
+{
+  "company": {
+    "name": "悦颜社",
+    "industry_sub": "社区型美容护理及皮肤管理连锁",
+    "region": "同一省会城市，9家直营门店",
+    "revenue_band": "3000万-5000万元",
+    "revenue_trend": "up",
+    "headcount_band": "50-100人",
+    "channels": ["到店自然客流", "会员复购", "本地生活平台", "社交推荐"],
+    "top_anxiety": "新客数量增长但老会员续费率下降，收入越来越依赖平台促销获客；若留存继续恶化，现金流和技师产能利用率都会承压。"
+  },
+  "market": {
+    "home_market": "25-45岁城市女性及周边社区家庭",
+    "expansion_intent": "进入邻近城市并增加轻医美合作项目，暂不开放加盟",
+    "demand_shift": "近一年营收增长6%，新客增长18%，但老会员续费率下降9个百分点，门店业绩差异扩大。"
+  },
+  "competition": {
+    "competitors": ["大型美容连锁", "医美机构", "社区个人工作室", "本地生活平台低价门店"],
+    "customer_values": ["服务效果", "技师稳定性", "安全卫生", "价格透明", "持续跟进"],
+    "self_scores": {
+      "服务效果": "强",
+      "技师稳定性": "中",
+      "安全卫生": "强",
+      "价格透明": "中",
+      "持续跟进": "强"
+    },
+    "unique_assets": ["成熟的技师培训体系", "9家直营网点", "约3.8万名会员及护理档案"]
+  },
+  "business_model": {
+    "revenue_sources": "基础护理、皮肤管理疗程、会员卡和家用护理产品",
+    "how_earn_retain": "依靠疗程组合销售、会员预付、技师排班效率和高毛利护理产品赚钱；通过固定顾问和技师、周期护理计划、会员权益、护理记录与回访留客。",
+    "revenue_mix": {
+      "到店自然客流": 0.35,
+      "会员复购": 0.4,
+      "本地生活平台": 0.15,
+      "社交推荐": 0.1
+    }
+  },
+  "capability": {
+    "team_structure": {
+      "production": "中",
+      "supply_chain": "中",
+      "sales": "强",
+      "marketing": "中",
+      "finance_management": "中"
+    },
+    "function_strength": {
+      "product": "强",
+      "supply_chain": "中",
+      "channel": "中",
+      "marketing": "中",
+      "finance_management": "中"
+    },
+    "digital_keyperson": "技师培训负责人和会员运营负责人"
+  },
+  "finance_basic": {
+    "net_margin_band": "16%-19%",
+    "cost_structure": "人工及提成约占收入35%，房租约12%，产品和耗材约14%，平台获客及营销约9%，其余为培训、设备折旧和总部费用。账上现金中约480万元对应尚未履约的会员预收款。",
+    "cash": 920,
+    "monthly_fixed": 145
+  },
+  "finance_plus": {
+    "product_lines": [
+      {"name": "基础美容护理", "revenue": 1800, "total_cost": 1476},
+      {"name": "皮肤管理疗程及会员服务", "revenue": 1200, "total_cost": 984},
+      {"name": "家用护理产品", "revenue": 600, "total_cost": 510}
+    ],
+    "customers": [
+      {"name": "第一大企业福利客户", "pct": 3},
+      {"name": "第二大企业福利客户", "pct": 2},
+      {"name": "第三大企业福利客户", "pct": 1},
+      {"name": "其他客户", "pct": 94}
+    ],
+    "ar": {"balance": 90, "days": 30}
+  },
+  "availability_map": {
+    "plus_present": [
+      "competition.self_scores",
+      "competition.unique_assets",
+      "business_model.revenue_mix",
+      "capability.digital_keyperson",
+      "finance.product_lines",
+      "finance.customers",
+      "finance.ar"
+    ],
+    "plus_missing": []
+  }
+}

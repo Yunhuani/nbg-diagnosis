@@ -1,0 +1,86 @@
+{
+  "company": {
+    "name": "禾味小馆",
+    "industry_sub": "中式现炒快餐连锁",
+    "region": "华东3个城市，24家直营门店",
+    "revenue_band": "5000万-1亿元",
+    "revenue_trend": "up",
+    "headcount_band": "100-300人",
+    "channels": ["门店堂食", "外卖平台", "企业团餐", "零售食品"],
+    "top_anxiety": "营收增长主要依赖持续开新店，但老店同店收入下降；继续扩店担心现金和管理能力跟不上，停止扩店又会失去增长。"
+  },
+  "market": {
+    "home_market": "城市写字楼、产业园区和大型社区",
+    "expansion_intent": "进入周边二线城市并尝试加盟模式",
+    "demand_shift": "近一年营收增长12%，主要来自新增5家门店，但老店同店收入下降约4%。"
+  },
+  "competition": {
+    "competitors": ["全国性中式快餐品牌", "区域连锁快餐", "低价外卖档口"],
+    "customer_values": ["出餐速度", "口味稳定", "食品安全", "午餐价格"],
+    "self_scores": {
+      "出餐速度": "强",
+      "口味稳定": "强",
+      "食品安全": "强",
+      "价格竞争力": "中"
+    },
+    "unique_assets": ["中央厨房", "区域供应商体系", "24家直营店积累的选址和单店运营数据"]
+  },
+  "business_model": {
+    "revenue_sources": "堂食、外卖、企业团餐、预制菜和调味食品",
+    "how_earn_retain": "依靠规模化采购、中央厨房统一加工、高峰期翻台和外卖订单密度赚钱；通过会员储值、工作日套餐、稳定口味和企业团餐长期合同留客。",
+    "revenue_mix": {
+      "门店堂食": 0.5,
+      "外卖平台": 0.3,
+      "企业团餐": 0.12,
+      "零售食品": 0.08
+    }
+  },
+  "capability": {
+    "team_structure": {
+      "production": "强",
+      "supply_chain": "强",
+      "sales": "中",
+      "marketing": "中",
+      "finance_management": "中"
+    },
+    "function_strength": {
+      "product": "强",
+      "supply_chain": "强",
+      "channel": "中",
+      "marketing": "中",
+      "finance_management": "中"
+    },
+    "digital_keyperson": null
+  },
+  "finance_basic": {
+    "net_margin_band": "6%-7%",
+    "cost_structure": "食材约占收入33%，人工约24%，租金及物业约12%，平台佣金和配送约8%，其余为水电、折旧、营销及总部费用。",
+    "cash": 1050,
+    "monthly_fixed": 270
+  },
+  "finance_plus": {
+    "product_lines": [
+      {"name": "直营门店堂食", "revenue": 3600, "total_cost": 3312},
+      {"name": "外卖及企业团餐", "revenue": 2160, "total_cost": 2074},
+      {"name": "零售食品及预制菜", "revenue": 1440, "total_cost": 1368}
+    ],
+    "customers": [
+      {"name": "第一大企业团餐客户", "pct": 6},
+      {"name": "第二大企业团餐客户", "pct": 4},
+      {"name": "第三大企业团餐客户", "pct": 3},
+      {"name": "其他客户", "pct": 87}
+    ],
+    "ar": {"balance": 480, "days": 45}
+  },
+  "availability_map": {
+    "plus_present": [
+      "competition.self_scores",
+      "competition.unique_assets",
+      "business_model.revenue_mix",
+      "finance.product_lines",
+      "finance.customers",
+      "finance.ar"
+    ],
+    "plus_missing": ["capability.digital_keyperson"]
+  }
+}

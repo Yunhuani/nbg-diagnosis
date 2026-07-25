@@ -1,0 +1,86 @@
+{
+  "company": {
+    "name": "拾光集",
+    "industry_sub": "家居、文创和生活杂货集合零售",
+    "region": "华中两个省份，18家门店",
+    "revenue_band": "5000万-1亿元",
+    "revenue_trend": "down",
+    "headcount_band": "100-300人",
+    "channels": ["社区店", "购物中心店", "微信小程序", "企业礼赠"],
+    "top_anxiety": "购物中心门店客流持续下降，库存周转变慢、折价损失增加；管理层不确定应保留大店还是快速转向社区店和即时零售。"
+  },
+  "market": {
+    "home_market": "城市家庭消费者、年轻女性和企业礼赠客户",
+    "expansion_intent": "关闭部分低效购物中心店，增加社区小店和即时零售渠道",
+    "demand_shift": "近一年营收下降8%；社区店基本持平，购物中心店下降约15%，线上小程序增长约20%。"
+  },
+  "competition": {
+    "competitors": ["全国生活方式连锁", "商超家居区", "电商平台低价店", "本地精品店"],
+    "customer_values": ["商品新鲜感", "价格", "门店便利性", "现场体验"],
+    "self_scores": {
+      "商品新鲜感": "中",
+      "价格": "中",
+      "门店便利性": "中",
+      "现场体验": "强"
+    },
+    "unique_assets": ["本地商圈选址经验", "区域供应商关系", "约22万名会员"]
+  },
+  "business_model": {
+    "revenue_sources": "门店零售、小程序零售、企业礼赠和自有品牌商品",
+    "how_earn_retain": "依靠商品进销差价、自有品牌毛利、门店坪效和库存周转赚钱；通过会员积分、节日主题商品、社区便利性和周期性上新留客。",
+    "revenue_mix": {
+      "社区店": 0.5,
+      "购物中心店": 0.3,
+      "微信小程序": 0.12,
+      "企业礼赠": 0.08
+    }
+  },
+  "capability": {
+    "team_structure": {
+      "production": "弱",
+      "supply_chain": "中",
+      "sales": "中",
+      "marketing": "中",
+      "finance_management": "中"
+    },
+    "function_strength": {
+      "product": "中",
+      "supply_chain": "中",
+      "channel": "中",
+      "marketing": "中",
+      "finance_management": "中"
+    },
+    "digital_keyperson": null
+  },
+  "finance_basic": {
+    "net_margin_band": "6%-8%",
+    "cost_structure": "商品采购约占收入52%，门店租金约13%，人工约14%，库存损耗和折价约5%，其余为物流、营销和总部管理费用。",
+    "cash": 720,
+    "monthly_fixed": 230
+  },
+  "finance_plus": {
+    "product_lines": [
+      {"name": "社区门店零售", "revenue": 3000, "total_cost": 2820},
+      {"name": "购物中心门店零售", "revenue": 1800, "total_cost": 1746},
+      {"name": "自有品牌、小程序及企业礼赠", "revenue": 1200, "total_cost": 1020}
+    ],
+    "customers": [
+      {"name": "第一大企业礼赠客户", "pct": 5},
+      {"name": "第二大企业礼赠客户", "pct": 3},
+      {"name": "第三大企业礼赠客户", "pct": 2},
+      {"name": "其他客户", "pct": 90}
+    ],
+    "ar": {"balance": 360, "days": 45}
+  },
+  "availability_map": {
+    "plus_present": [
+      "competition.self_scores",
+      "competition.unique_assets",
+      "business_model.revenue_mix",
+      "finance.product_lines",
+      "finance.customers",
+      "finance.ar"
+    ],
+    "plus_missing": ["capability.digital_keyperson"]
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "company": {
+    "name": "简居生活",
+    "industry_sub": "线上家居收纳及清洁用品品牌",
+    "region": "全国销售，华东和华南仓储",
+    "revenue_band": "5000万-1亿元",
+    "revenue_trend": "up",
+    "headcount_band": "50-100人",
+    "channels": ["天猫", "抖音", "京东", "拼多多", "私域"],
+    "top_anxiety": "销售额仍在快速增长，但流量和直播投放费用上涨更快；一旦减少投放，订单立即下降，尚未形成稳定的自然流量和复购增长。"
+  },
+  "market": {
+    "home_market": "一二线城市年轻家庭、租房人群和新婚家庭",
+    "expansion_intent": "增加抖音直播和私域复购，并尝试进入东南亚跨境电商市场",
+    "demand_shift": "近一年营收增长28%，但净利润仅增长约5%，利润率连续两个季度下降。"
+  },
+  "competition": {
+    "competitors": ["成熟家居品牌", "白牌工厂直营店", "直播间低价品牌"],
+    "customer_values": ["价格", "外观设计", "真实使用效果", "物流速度", "售后评价"],
+    "self_scores": {
+      "价格": "中",
+      "外观设计": "强",
+      "使用效果": "中",
+      "物流速度": "强",
+      "售后服务": "中"
+    },
+    "unique_assets": ["稳定的柔性供应链", "短视频内容团队", "约65万名历史购买用户"]
+  },
+  "business_model": {
+    "revenue_sources": "平台零售、直播销售、私域复购和少量经销订单",
+    "how_earn_retain": "依靠爆款商品规模采购、组合套装提高客单价和自有设计产品获得毛利；通过持续上新、会员优惠、耗材复购、私域内容和售后服务留客。",
+    "revenue_mix": {
+      "天猫": 0.38,
+      "抖音": 0.3,
+      "京东": 0.15,
+      "拼多多": 0.07,
+      "私域及其他": 0.1
+    }
+  },
+  "capability": {
+    "team_structure": {
+      "production": "弱",
+      "supply_chain": "强",
+      "sales": "强",
+      "marketing": "强",
+      "finance_management": "中"
+    },
+    "function_strength": {
+      "product": "强",
+      "supply_chain": "强",
+      "channel": "强",
+      "marketing": "强",
+      "finance_management": "中"
+    },
+    "digital_keyperson": "直播投放和短视频内容团队负责人"
+  },
+  "finance_basic": {
+    "net_margin_band": "7%-9%",
+    "cost_structure": "商品采购约占收入39%，平台佣金及投流约25%，仓储物流约10%，退换货损耗约5%，其余为人工、内容制作和管理费用。",
+    "cash": 1800,
+    "monthly_fixed": 240
+  },
+  "finance_plus": {
+    "product_lines": [
+      {"name": "收纳旗舰系列", "revenue": 4500, "total_cost": 4050},
+      {"name": "厨卫清洁系列", "revenue": 2700, "total_cost": 2592},
+      {"name": "私域高毛利组合产品", "revenue": 1800, "total_cost": 1620}
+    ],
+    "customers": [
+      {"name": "第一大经销客户", "pct": 8},
+      {"name": "第二大经销客户", "pct": 5},
+      {"name": "第三大经销客户", "pct": 4},
+      {"name": "其他客户", "pct": 83}
+    ],
+    "ar": {"balance": 1150, "days": 30}
+  },
+  "availability_map": {
+    "plus_present": [
+      "competition.self_scores",
+      "competition.unique_assets",
+      "business_model.revenue_mix",
+      "capability.digital_keyperson",
+      "finance.product_lines",
+      "finance.customers",
+      "finance.ar"
+    ],
+    "plus_missing": []
+  }
+}

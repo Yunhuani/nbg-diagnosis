@@ -1,0 +1,90 @@
+{
+  "company": {
+    "name": "智造云脑",
+    "industry_sub": "面向制造企业的AI知识管理和智能客服SaaS",
+    "region": "全国，重点覆盖长三角、珠三角和京津地区",
+    "revenue_band": "3000万-5000万元",
+    "revenue_trend": "up",
+    "headcount_band": "100-300人",
+    "channels": ["直销团队", "渠道合作伙伴", "云市场", "客户转介绍"],
+    "top_anxiety": "营收高速增长，但越来越多收入来自回款慢、交付重的定制项目；公司可能从高复用SaaS逐渐变成项目制软件服务商。"
+  },
+  "market": {
+    "home_market": "年营收1亿-50亿元的制造企业和产业服务机构",
+    "expansion_intent": "从智能客服扩展到企业知识库、销售助手和海外多语言服务",
+    "demand_shift": "近一年营收增长35%，但应收账款增长约70%，定制实施收入占比上升。"
+  },
+  "competition": {
+    "competitors": ["大型云厂商", "通用大模型平台", "垂直行业软件商", "企业内部自研团队"],
+    "customer_values": ["数据安全", "行业准确率", "系统集成能力", "上线周期", "持续服务"],
+    "self_scores": {
+      "数据安全": "强",
+      "行业准确率": "强",
+      "系统集成能力": "强",
+      "上线周期": "中",
+      "持续服务": "中"
+    },
+    "unique_assets": ["制造业知识图谱", "行业语料", "20余个ERP和CRM系统连接器", "标杆客户案例"]
+  },
+  "business_model": {
+    "revenue_sources": "年度SaaS订阅、实施服务、定制开发和模型调用增值包",
+    "how_earn_retain": "依靠标准软件订阅续费、平台复用、模型调用规模效应和增值模块赚钱；通过业务数据沉淀、系统集成深度、培训、模型优化和年度服务合同留客。",
+    "revenue_mix": {
+      "直销团队": 0.6,
+      "渠道合作伙伴": 0.2,
+      "云市场": 0.12,
+      "客户转介绍": 0.08
+    }
+  },
+  "capability": {
+    "team_structure": {
+      "production": "强",
+      "supply_chain": "弱",
+      "sales": "强",
+      "marketing": "中",
+      "finance_management": "中"
+    },
+    "function_strength": {
+      "product": "强",
+      "supply_chain": "弱",
+      "channel": "中",
+      "marketing": "中",
+      "finance_management": "中",
+      "research_development": "强",
+      "delivery": "中"
+    },
+    "digital_keyperson": "核心模型架构师和制造业知识图谱负责人"
+  },
+  "finance_basic": {
+    "net_margin_band": "15%-18%",
+    "cost_structure": "研发人员及研发基础设施约占收入31%，销售获客约18%，实施交付约15%，模型和云资源约8%，其余为客服、行政和管理费用。",
+    "cash": 2600,
+    "monthly_fixed": 310
+  },
+  "finance_plus": {
+    "product_lines": [
+      {"name": "标准SaaS订阅", "revenue": 2800, "total_cost": 2184},
+      {"name": "实施及系统集成", "revenue": 1200, "total_cost": 1080},
+      {"name": "定制开发及增值服务", "revenue": 800, "total_cost": 760}
+    ],
+    "customers": [
+      {"name": "第一大制造集团客户", "pct": 16},
+      {"name": "第二大产业平台客户", "pct": 10},
+      {"name": "第三大制造企业客户", "pct": 7},
+      {"name": "其他客户", "pct": 67}
+    ],
+    "ar": {"balance": 2100, "days": 105}
+  },
+  "availability_map": {
+    "plus_present": [
+      "competition.self_scores",
+      "competition.unique_assets",
+      "business_model.revenue_mix",
+      "capability.digital_keyperson",
+      "finance.product_lines",
+      "finance.customers",
+      "finance.ar"
+    ],
+    "plus_missing": []
+  }
+}
