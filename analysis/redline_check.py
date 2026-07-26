@@ -238,6 +238,32 @@ def _check_computed_financial_consistency(
             if not source.startswith("financial_facts"):
                 continue
 
+            source_paths = [
+                raw_path.split("=", 1)[0].strip()
+                for raw_path in re.split(r"[,;]", source)
+                if raw_path.split("=", 1)[0].strip()
+            ]
+            has_financial_path = any(
+                path == "financial_facts" or path.startswith("financial_facts.")
+                for path in source_paths
+            )
+            has_diagnosis_path = any(
+                path.startswith("diagnosis_intake.") for path in source_paths
+            )
+            if has_financial_path and has_diagnosis_path:
+                _add_failure(
+                    failures,
+                    "computed_financial_consistency",
+                    f"dimensions[{dim_index}].evidence[{evidence_index}].source",
+                    (
+                        "computed evidence source mixes financial_facts and "
+                        f"diagnosis_intake paths: {source}. computed source must contain "
+                        "only financial_facts paths; numbers from diagnosis_intake must "
+                        "use source_type=client_provided"
+                    ),
+                )
+                continue
+
             financial_values = _financial_values_for_source(financial_facts, source)
             if financial_values is None:
                 evidence["source_type"] = "inferred"

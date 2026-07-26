@@ -557,7 +557,7 @@ def test_redline_check_allows_derived_financial_values_from_object_source():
     assert report["warnings"] == []
 
 
-def test_redline_check_skips_diagnosis_intake_paths_in_computed_financial_source():
+def test_redline_check_rejects_mixed_financial_and_diagnosis_paths():
     dimensions = [
         _dimension(
             "finance",
@@ -581,7 +581,9 @@ def test_redline_check_skips_diagnosis_intake_paths_in_computed_financial_source
         scope="single",
     )
 
-    assert report["passed"] is True
+    assert report["passed"] is False
+    assert "computed_financial_consistency" in _checks(report)
+    assert "mixes financial_facts and diagnosis_intake paths" in report["failures"][0]["reason"]
 
 
 def test_redline_check_rejects_market_percent_mislabelled_as_computed():
