@@ -21,6 +21,7 @@ from analysis import (
     run_redline_check,
     synthesize_diagnosis,
 )
+from analysis.retrieval import retrieve_market_corpus
 from finance import calculate_financial_facts
 
 logger = logging.getLogger(__name__)
@@ -60,12 +61,7 @@ RETRY_GUARDRAIL = (
 @app.post("/diagnose")
 def create_diagnosis(request: DiagnoseRequest) -> dict[str, str]:
     job_id = str(uuid4())
-    source_corpora = {
-        "market": list(request.market_brief.market) if request.market_brief else [],
-        "competition": (
-            list(request.market_brief.competition) if request.market_brief else []
-        ),
-    }
+    source_corpora = _source_corpora_for_request(request)
 
     with _jobs_lock:
         _jobs[job_id] = {
@@ -80,6 +76,44 @@ def create_diagnosis(request: DiagnoseRequest) -> dict[str, str]:
         daemon=True,
     ).start()
     return {"job_id": job_id}
+
+
+def _source_corpora_for_request(request: DiagnoseRequest) -> dict[str, list[dict[str, Any]]]:
+    if request.market_brief is not None:
+        return {
+            "market": list(request.market_brief.market),
+            "competition": list(request.market_brief.competition),
+        }
+
+    diagnosis_intake = request.diagnosis_intake
+    company = diagnosis_intake.get("company") or {}
+    business_model = diagnosis_intake.get("business_model") or {}
+    industry = _string_value(company.get("industry_sub"))
+    product_category = _string_value(business_model.get("revenue_sources"))
+    region = _string_value(company.get("region"))
+    target_regions = [region] if region else []
+
+    market_corpus: list[dict[str, Any]] = []
+    if industry and product_category and target_regions:
+        try:
+            market_corpus = retrieve_market_corpus(
+                industry=industry,
+                product_category=product_category,
+                target_regions=target_regions,
+            )
+        except Exception:
+            logger.exception("Market retrieval failed; continuing with empty corpus")
+
+    return {
+        "market": market_corpus,
+        "competition": [],
+    }
+
+
+def _string_value(value: Any) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
 
 
 @app.get("/diagnose/{job_id}")

@@ -87,6 +87,91 @@ def test_build_data_quality_marks_basic_finance_as_limited_and_all_full_as_full(
     assert limited_result["dimensions"][-1]["level"] == "limited"
 
 
+def test_source_corpora_uses_market_brief_without_retrieval(monkeypatch):
+    def fail_retrieval(*args, **kwargs):
+        raise AssertionError("retrieval should not run when market_brief is provided")
+
+    monkeypatch.setattr(api_server, "retrieve_market_corpus", fail_retrieval)
+
+    request = api_server.DiagnoseRequest(
+        diagnosis_intake={},
+        market_brief=api_server.MarketBrief(
+            market=[{"claim": "市场事实"}],
+            competition=[{"claim": "竞争事实"}],
+        ),
+    )
+
+    assert api_server._source_corpora_for_request(request) == {
+        "market": [{"claim": "市场事实"}],
+        "competition": [{"claim": "竞争事实"}],
+    }
+
+
+def test_source_corpora_retrieves_from_diagnosis_intake_paths(monkeypatch):
+    calls = {}
+
+    def fake_market(industry, product_category, target_regions):
+        calls["market"] = (industry, product_category, target_regions)
+        return [{"claim": "检索市场"}]
+
+    monkeypatch.setattr(api_server, "retrieve_market_corpus", fake_market)
+
+    request = api_server.DiagnoseRequest(
+        diagnosis_intake={
+            "company": {"industry_sub": "卫浴五金", "region": "中东"},
+            "business_model": {
+                "revenue_sources": "法兰、地漏、龙头配件",
+            },
+        },
+    )
+
+    assert api_server._source_corpora_for_request(request) == {
+        "market": [{"claim": "检索市场"}],
+        "competition": [],
+    }
+    assert calls["market"] == (
+        "卫浴五金",
+        "法兰、地漏、龙头配件",
+        ["中东"],
+    )
+def test_source_corpora_retrieval_failure_sets_only_that_dimension_empty(monkeypatch):
+    def fail_market(*args, **kwargs):
+        raise RuntimeError("market search failed")
+
+    monkeypatch.setattr(api_server, "retrieve_market_corpus", fail_market)
+    request = api_server.DiagnoseRequest(
+        diagnosis_intake={
+            "company": {"industry_sub": "卫浴五金", "region": "中东"},
+            "business_model": {
+                "revenue_sources": "法兰、地漏、龙头配件",
+            },
+        },
+    )
+
+    assert api_server._source_corpora_for_request(request) == {
+        "market": [],
+        "competition": [],
+    }
+
+
+def test_source_corpora_missing_market_fields_sets_market_empty(monkeypatch):
+    def fail_market(*args, **kwargs):
+        raise AssertionError("market retrieval should not run with missing fields")
+
+    monkeypatch.setattr(api_server, "retrieve_market_corpus", fail_market)
+    request = api_server.DiagnoseRequest(
+        diagnosis_intake={
+            "company": {"industry_sub": "卫浴五金"},
+            "business_model": {"revenue_sources": "法兰、地漏、龙头配件"},
+        },
+    )
+
+    assert api_server._source_corpora_for_request(request) == {
+        "market": [],
+        "competition": [],
+    }
+
+
 def test_calculate_financial_facts_accepts_null_cash_and_monthly_fixed():
     facts = api_server._calculate_financial_facts(
         {
