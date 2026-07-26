@@ -113,6 +113,23 @@ def test_normalize_search_terms_falls_back_to_original_for_empty_values(monkeypa
     )
 
 
+def test_retrieve_market_corpus_third_query_uses_market_demand_without_export(monkeypatch):
+    queries = []
+
+    monkeypatch.setattr(
+        retrieval,
+        "normalize_search_terms",
+        lambda industry, product, regions: (industry, product, regions),
+    )
+    monkeypatch.setattr(retrieval, "_retrieve_corpus", lambda received: queries.extend(received) or [])
+
+    retrieval.retrieve_market_corpus("美容连锁", "皮肤管理", ["华东"])
+
+    assert len(queries) == 3
+    assert "出口" not in queries[2]
+    assert queries[2] == "美容连锁 华东 市场需求 趋势 2026 2025"
+
+
 def test_build_entries_deduplicates_same_article_mobile_and_pc_without_multi_source_note():
     search_results = [
         {

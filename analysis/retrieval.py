@@ -123,7 +123,7 @@ def retrieve_market_corpus(
         queries = [
             f"{industry} 市场规模 增速 CAGR {year_hint}",
             f"{industry} {product_category} 市场规模 {year_hint}",
-            f"{industry} {' '.join(target_regions)} 需求 趋势 出口 {year_hint}",
+            f"{industry} {' '.join(target_regions)} 市场需求 趋势 {year_hint}",
         ]
         return _retrieve_corpus(queries)
     except Exception:
@@ -145,14 +145,15 @@ def normalize_search_terms(
                 "industry：标准行业称谓。必须能在行业研究报告中被检索到。\n"
                 "  - 去除地域词（浙江、广东、华东）\n"
                 "  - 去除身份词（出口商、制造商、公司、厂）\n"
-                "  - 去除渠道词（外贸、跨境、代工、OEM）\n"
+                "  - 去除渠道与经营模式词（外贸、跨境、代工、OEM、直营、连锁、加盟、电商、线上、线下）\n"
                 "  - 保留行业本身的品类层级\n\n"
                 "product_category：主营产品品类，简短名词短语。\n"
+                "  - 服务类业务填服务品类（如皮肤管理、企业SaaS），不必是实物产品\n"
                 "  - 去除\"及定制小单\"\"等\"\"其他\"这类非产品表述\n"
                 "  - 最多保留三个核心品类，用顿号分隔\n\n"
-                "regions：目标市场地区列表。\n"
-                "  - 把\"欧美及中东\"这类合并表述拆成独立地区\n"
-                "  - 只保留地理名词\n\n"
+                "regions：业务覆盖区域列表。\n"
+                "  - 把合并表述拆成独立地区（如\"华东华南\"拆成\"华东\"、\"华南\"）\n"
+                "  - 只保留地理名词,去除\"同一省会城市\"\"9家门店\"这类描述性或含数量的表述\n\n"
                 "禁止编造输入中不存在的行业或产品。\n"
                 "若某个字段无法归一化，原样返回输入值。\n\n"
                 "输入：\n"
