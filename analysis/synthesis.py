@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable
 from typing import Any
+
+import config
 
 from .llm_client import call_deepseek_json
 
@@ -90,7 +91,7 @@ def call_synthesis_json(system_prompt: str, user_prompt: str) -> dict[str, Any]:
     return call_deepseek_json(
         system_prompt,
         user_prompt,
-        model=os.environ.get("DEEPSEEK_SYNTHESIS_MODEL"),
+        model=config.DEEPSEEK_SYNTHESIS_MODEL,
     )
 
 

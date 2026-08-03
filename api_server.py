@@ -10,6 +10,8 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+import config
+
 from analysis import (
     analyze_business_model,
     analyze_capability,
@@ -33,7 +35,7 @@ DIMENSIONS = (
     "capability",
     "finance",
 )
-MAX_DIMENSION_WORKERS = 3
+MAX_DIMENSION_WORKERS = config.MAX_DIMENSION_WORKERS
 
 
 class MarketBrief(BaseModel):

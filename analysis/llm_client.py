@@ -11,10 +11,9 @@ from pathlib import Path
 from typing import Any
 from urllib import error, request
 
+import config
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
-DEFAULT_MODEL = "deepseek-v4-pro"
-DEFAULT_MAX_TOKENS = 8192
 logger = logging.getLogger(__name__)
 
 
@@ -29,9 +28,9 @@ def call_deepseek_json(
     model: str | None = None,
     env_path: str | Path = ".env",
     base_url: str | None = None,
-    timeout: int = 60,
-    max_tokens: int = DEFAULT_MAX_TOKENS,
-    max_attempts: int = 3,
+    timeout: int = config.LLM_TIMEOUT_SECONDS,
+    max_tokens: int = config.DEFAULT_MAX_TOKENS,
+    max_attempts: int = config.LLM_MAX_ATTEMPTS,
     retry_backoff_seconds: float = 0.5,
 ) -> dict[str, Any]:
     """Call DeepSeek and return the assistant message parsed as JSON."""
@@ -44,7 +43,7 @@ def call_deepseek_json(
         model
         or os.environ.get("DEEPSEEK_MODEL")
         or env.get("DEEPSEEK_MODEL")
-        or DEFAULT_MODEL
+        or config.DEEPSEEK_MODEL
     )
     endpoint = (
         base_url
@@ -59,7 +58,7 @@ def call_deepseek_json(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "temperature": 0.2,
+        "temperature": config.LLM_TEMPERATURE,
         "thinking": {"type": "disabled"},
         "response_format": {"type": "json_object"},
         "max_tokens": max_tokens,
