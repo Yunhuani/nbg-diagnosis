@@ -2,18 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from datetime import UTC, datetime
 from typing import Any
-from urllib import parse, request
+from urllib import parse
 
+from analysis.search_client import bocha_web_search
 from .llm_client import call_deepseek_json
 
 
-BOCHA_SEARCH_URL = "https://api.bochaai.com/v1/web-search"
-SEARCH_COUNT = 10
-SEARCH_TIMEOUT_SECONDS = 20
 logger = logging.getLogger(__name__)
 
 SOURCE_TIER_DOMAINS: dict[str, tuple[str, ...]] = {
@@ -245,7 +242,7 @@ def _retrieve_corpus(queries: list[str]) -> list[dict]:
     now = datetime.now(UTC)
     for query in queries:
         try:
-            search_results = _bocha_web_search(query)
+            search_results = bocha_web_search(query)
         except Exception as exc:
             logger.warning("Bocha search failed for query %r: %s", query, exc)
             continue
@@ -264,36 +261,6 @@ def _retrieve_corpus(queries: list[str]) -> list[dict]:
             for item in extracted_items
         )
     return _build_entries(all_search_results, all_extracted_items, now)
-
-
-def _bocha_web_search(query: str) -> list[dict[str, Any]]:
-    api_key = os.environ.get("BOCHA_API_KEY")
-    if not api_key:
-        raise RuntimeError("BOCHA_API_KEY is missing")
-
-    payload = {
-        "query": query,
-        "summary": True,
-        "count": SEARCH_COUNT,
-        "freshness": "noLimit",
-    }
-    body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    req = request.Request(
-        BOCHA_SEARCH_URL,
-        data=body,
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-    with request.urlopen(req, timeout=SEARCH_TIMEOUT_SECONDS) as response:
-        response_body = response.read()
-    data = json.loads(response_body.decode("utf-8"))
-    value = data["data"]["webPages"]["value"]
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, dict)]
 
 
 def _filter_search_results_for_extraction(search_results: list[dict[str, Any]]) -> list[dict[str, Any]]:

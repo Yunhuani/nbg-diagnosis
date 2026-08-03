@@ -259,7 +259,7 @@ def test_retrieve_market_corpus_continues_after_one_query_failure(monkeypatch):
             for item in extracted_items
         ]
 
-    monkeypatch.setattr(retrieval, "_bocha_web_search", fake_search)
+    monkeypatch.setattr(retrieval, "bocha_web_search", fake_search)
     monkeypatch.setattr(retrieval, "_extract_facts", fake_extract)
     monkeypatch.setattr(retrieval, "_build_entries", fake_build_entries)
     monkeypatch.setattr(
