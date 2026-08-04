@@ -47,10 +47,14 @@ class ProjectOverviewIntake:
     bp_title: str
     company_name: str
     founded: str
+    # C 类品牌字段：承载客户品牌资产，必须原样保留，绝不改写。
+    one_liner: str
     business_summary: str
     team_scale: str
     slogan: str
     website: str | None = None
+    mission: str | None = None
+    vision: str | None = None
 
 
 @dataclass
@@ -155,6 +159,7 @@ class PlanIntake:
 class UseOfFundsIntake:
     purpose: str
     percentage: str
+    description: str | None = None
 
 
 @dataclass
@@ -402,15 +407,15 @@ TEXT_LENGTH_CONSTRAINTS: dict[str, TextLengthRange] = {
     "module_0.bp_title": TextLengthRange(2, 40),
     "module_0.company_name": TextLengthRange(2, 50),
     "module_0.founded": TextLengthRange(4, 30),
-    "module_0.one_liner": TextLengthRange(20, 80),
+    "module_0.one_liner": TextLengthRange(12, 40),
     "module_0.business_summary": TextLengthRange(120, 360),
     "module_0.team_scale": TextLengthRange(2, 80),
-    "module_0.slogan": TextLengthRange(8, 40),
+    "module_0.slogan": TextLengthRange(8, 30),
     "module_1.target_customer": TextLengthRange(80, 220),
     "module_1.pain_points": TextLengthRange(180, 480),
     "module_1.why_now": TextLengthRange(80, 220),
     "module_2.solution": TextLengthRange(120, 360),
-    "module_2.core_value": TextLengthRange(120, 360),
+    "module_2.core_value": TextLengthRange(15, 50),
     "module_2.business_model": TextLengthRange(150, 420),
     "module_2.sales_model": TextLengthRange(100, 300),
     "module_3.market_size": TextLengthRange(80, 220),
