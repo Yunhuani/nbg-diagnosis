@@ -20,6 +20,8 @@ from business_plan.schemas import (
     DemandIntake,
     FieldOutput,
     FundingIntake,
+    GrowthForecastIntake,
+    MarketIntake,
     ModuleOutput,
     PlanIntake,
     ProductModelIntake,
@@ -29,6 +31,7 @@ from business_plan.schemas import (
     TEXT_LENGTH_CONSTRAINTS,
     CurrentStateIntake,
 )
+from business_plan.search import search_market_evidence
 from business_plan.validation import validate_rewrite
 
 
@@ -138,6 +141,109 @@ def generate_product_module(intake: ProductModelIntake) -> ModuleOutput:
         "sales_model": sales_model,
     }
     return _module_output(2, fields)
+
+
+def generate_market_module(intake: MarketIntake) -> ModuleOutput:
+    """Generate module 3 without allowing search data to overwrite customer facts."""
+
+    market_size_values = {
+        "tam": _client_or_pending(intake.market_size.tam),
+        "sam": _client_or_pending(intake.market_size.sam),
+        "som": _client_or_pending(intake.market_size.som),
+    }
+    growth_forecast = [_growth_forecast_output(item) for item in intake.growth_forecast]
+    needs_search = _market_data_is_missing(intake)
+    market_validation = _market_validation_output(
+        intake.industry_context,
+        needs_search,
+    )
+    market_narrative = (
+        _rewrite_qualitative_field(
+            "market_narrative",
+            intake.basis,
+            QUALITATIVE_FIELD_REWRITE_PROMPT,
+        )
+        if intake.basis and intake.basis.strip()
+        else FieldOutput("待补充", SourceType.PENDING_CUSTOMER)
+    )
+    fields = {
+        "market_size": FieldOutput(
+            market_size_values,
+            _market_structured_source_type(list(market_size_values.values())),
+        ),
+        "growth_forecast": FieldOutput(
+            growth_forecast,
+            _growth_forecast_source_type(growth_forecast),
+        ),
+        "market_narrative": market_narrative,
+        "market_validation": market_validation,
+    }
+    return _module_output(3, fields)
+
+
+def _growth_forecast_output(item: GrowthForecastIntake) -> dict[str, FieldOutput]:
+    return {
+        "year": _client_or_pending(item.year),
+        "market_size": _client_or_pending(item.market_size),
+        "growth_rate": _client_or_pending(item.growth_rate),
+    }
+
+
+def _growth_forecast_source_type(
+    rows: list[dict[str, FieldOutput]],
+) -> SourceType:
+    return _market_structured_source_type(
+        [field for row in rows for field in row.values()]
+    )
+
+
+def _market_structured_source_type(fields: list[FieldOutput]) -> SourceType:
+    if not fields or all(field.source_type is SourceType.PENDING_CUSTOMER for field in fields):
+        return SourceType.PENDING_CUSTOMER
+    return SourceType.CLIENT_PROVIDED
+
+
+def _market_data_is_missing(intake: MarketIntake) -> bool:
+    market_values = (
+        intake.market_size.tam,
+        intake.market_size.sam,
+        intake.market_size.som,
+    )
+    return (
+        any(not value or not value.strip() for value in market_values)
+        or not intake.growth_forecast
+        or any(
+            not value or not value.strip()
+            for item in intake.growth_forecast
+            for value in (item.year, item.market_size, item.growth_rate)
+        )
+    )
+
+
+def _market_validation_output(
+    industry_context: str | None,
+    needs_search: bool,
+) -> FieldOutput:
+    if not needs_search:
+        return FieldOutput([], SourceType.PENDING_CUSTOMER)
+    if not industry_context or not industry_context.strip():
+        return FieldOutput(
+            "待补充",
+            SourceType.PENDING_CUSTOMER,
+            message="建议由客户提供该数据",
+        )
+    outcome = search_market_evidence(3, industry_context)
+    if not outcome.evidence:
+        return FieldOutput(
+            "待补充",
+            SourceType.PENDING_CUSTOMER,
+            message="建议由客户提供该数据",
+        )
+    return FieldOutput(
+        outcome.evidence,
+        SourceType.SEARCH_VALIDATION,
+        source_ref=outcome.evidence[0].source_ref,
+    )
 
 
 def generate_traction_module(intake: CurrentStateIntake) -> ModuleOutput:

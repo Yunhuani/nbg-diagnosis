@@ -30,6 +30,17 @@ class FieldOutput:
     value: Any
     source_type: SourceType
     source_ref: SourceReference | None = None
+    message: str | None = None
+
+
+@dataclass
+class SearchEvidence:
+    """One accepted search-only data point, kept separate from customer facts."""
+
+    data_point: str
+    year: int
+    source_type: SourceType
+    source_ref: SourceReference
 
 
 @dataclass
@@ -110,6 +121,7 @@ class MarketIntake:
     market_size: MarketSizeIntake
     growth_forecast: list[GrowthForecastIntake]
     basis: str | None = None
+    industry_context: str | None = None
 
 
 @dataclass
