@@ -391,21 +391,54 @@ class PendingItem:
 
 
 @dataclass
+class ModuleGenerationStatus:
+    """Execution state for one independently generated BP module."""
+
+    module_id: int
+    status: str
+    duration_seconds: float
+    error_message: str | None = None
+
+
+@dataclass
+class DegradedField:
+    """A rewrite field that fell back to the customer-provided original."""
+
+    module_id: int
+    field_name: str
+
+
+@dataclass
+class GenerationStats:
+    """Per-run observability data for BP cost and quality analysis."""
+
+    llm_call_count: int
+    search_call_count: int
+    minimum_llm_call_count: int
+    retry_llm_call_count: int
+    total_duration_seconds: float
+    module_durations: dict[int, float]
+    degraded_fields: list[DegradedField]
+
+
+@dataclass
 class BPResult:
     """The completed BP, preserving the specification's module 0-8 numbering."""
 
     bp_title: str
-    executive_summary: ExecutiveSummaryOutput
-    project_overview: ModuleOutput
-    demand: ModuleOutput
-    product_model: ModuleOutput
-    market: ModuleOutput
-    competition: ModuleOutput
-    current_state: ModuleOutput
-    plan: ModuleOutput
-    funding: ModuleOutput
-    team: ModuleOutput
+    executive_summary: ExecutiveSummaryOutput | None
+    project_overview: ModuleOutput | None
+    demand: ModuleOutput | None
+    product_model: ModuleOutput | None
+    market: ModuleOutput | None
+    competition: ModuleOutput | None
+    current_state: ModuleOutput | None
+    plan: ModuleOutput | None
+    funding: ModuleOutput | None
+    team: ModuleOutput | None
     pending_items: list[PendingItem]
+    module_statuses: dict[int, ModuleGenerationStatus]
+    generation_stats: GenerationStats
 
 
 # Recommended character ranges for all narrative text output fields. Structured
