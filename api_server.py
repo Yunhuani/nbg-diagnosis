@@ -3,8 +3,11 @@ from __future__ import annotations
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from dataclasses import MISSING, fields as dataclass_fields, is_dataclass
+from enum import Enum
 from threading import Lock, Thread
-from typing import Any
+from types import UnionType
+from typing import Any, Union, get_args, get_origin, get_type_hints
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException
@@ -24,6 +27,8 @@ from analysis import (
     synthesize_diagnosis,
 )
 from analysis.retrieval import retrieve_market_corpus
+from business_plan.orchestrator import generate_business_plan
+from business_plan.schemas import BPIntake
 from finance import calculate_financial_facts
 
 logger = logging.getLogger(__name__)
@@ -48,10 +53,22 @@ class DiagnoseRequest(BaseModel):
     market_brief: MarketBrief | None = None
 
 
+class BusinessPlanRequest(BaseModel):
+    bp_intake: dict[str, Any] | None = None
+
+
+class BPIntakeValidationError(ValueError):
+    def __init__(self, missing_fields: list[str]) -> None:
+        self.missing_fields = sorted(set(missing_fields))
+        super().__init__("missing required BP intake fields")
+
+
 app = FastAPI(title="NBG Diagnosis API")
 
 _jobs: dict[str, dict[str, Any]] = {}
 _jobs_lock = Lock()
+_business_plan_jobs: dict[str, dict[str, Any]] = {}
+_business_plan_jobs_lock = Lock()
 
 RETRY_GUARDRAIL = (
     "上一次输出未通过单维红线自检。只填写本维度前缀的 degradation.missing_plus；"
@@ -125,6 +142,165 @@ def get_diagnosis(job_id: str) -> dict[str, Any]:
         if job is None:
             raise HTTPException(status_code=404, detail="job_id not found")
         return dict(job)
+
+
+@app.post("/business-plans")
+def create_business_plan(request: BusinessPlanRequest) -> dict[str, str]:
+    if request.bp_intake is None:
+        raise HTTPException(
+            status_code=400,
+            detail={"missing_fields": ["bp_intake"]},
+        )
+    try:
+        intake = _parse_bp_intake(request.bp_intake)
+    except BPIntakeValidationError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"missing_fields": exc.missing_fields},
+        ) from exc
+
+    job_id = str(uuid4())
+    with _business_plan_jobs_lock:
+        _business_plan_jobs[job_id] = {
+            "status": "pending",
+            "result": None,
+            "error": None,
+        }
+
+    Thread(
+        target=_run_business_plan_job,
+        args=(job_id, intake),
+        daemon=True,
+    ).start()
+    return {"job_id": job_id}
+
+
+@app.get("/business-plans/{job_id}")
+def get_business_plan(job_id: str) -> dict[str, Any]:
+    with _business_plan_jobs_lock:
+        job = _business_plan_jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail="business plan job_id not found")
+        return dict(job)
+
+
+def _run_business_plan_job(job_id: str, intake: BPIntake) -> None:
+    _update_business_plan_job(job_id, status="running")
+    try:
+        result = _serialize_business_plan_result(generate_business_plan(intake))
+    except Exception as exc:
+        _update_business_plan_job(job_id, status="error", result=None, error=str(exc))
+        return
+    _update_business_plan_job(job_id, status="done", result=result, error=None)
+
+
+def _update_business_plan_job(job_id: str, **changes: Any) -> None:
+    with _business_plan_jobs_lock:
+        _business_plan_jobs[job_id].update(changes)
+
+
+def _parse_bp_intake(payload: dict[str, Any]) -> BPIntake:
+    missing_fields: list[str] = []
+    intake = _parse_bp_dataclass(payload, BPIntake, "bp_intake", missing_fields)
+    if missing_fields:
+        raise BPIntakeValidationError(missing_fields)
+    return intake
+
+
+def _parse_bp_dataclass(
+    payload: Any,
+    model: type[Any],
+    path: str,
+    missing_fields: list[str],
+) -> Any:
+    if not isinstance(payload, dict):
+        missing_fields.append(path)
+        return None
+
+    type_hints = get_type_hints(model)
+    values: dict[str, Any] = {}
+    for field in dataclass_fields(model):
+        field_path = f"{path}.{field.name}"
+        field_type = type_hints[field.name]
+        if field.name not in payload or payload[field.name] is None:
+            if field.default is not MISSING:
+                values[field.name] = field.default
+            elif field.default_factory is not MISSING:
+                values[field.name] = field.default_factory()
+            elif _is_optional_type(field_type):
+                values[field.name] = None
+            else:
+                missing_fields.append(field_path)
+                values[field.name] = None
+            continue
+        values[field.name] = _parse_bp_value(
+            payload[field.name],
+            field_type,
+            field_path,
+            missing_fields,
+        )
+    return model(**values)
+
+
+def _parse_bp_value(
+    value: Any,
+    expected_type: Any,
+    path: str,
+    missing_fields: list[str],
+) -> Any:
+    origin = get_origin(expected_type)
+    if origin in (Union, UnionType):
+        non_none_types = [item for item in get_args(expected_type) if item is not type(None)]
+        return _parse_bp_value(value, non_none_types[0], path, missing_fields)
+    if is_dataclass(expected_type):
+        return _parse_bp_dataclass(value, expected_type, path, missing_fields)
+    if origin is list:
+        if not isinstance(value, list):
+            missing_fields.append(path)
+            return []
+        item_type = get_args(expected_type)[0]
+        return [
+            _parse_bp_value(item, item_type, f"{path}[{index}]", missing_fields)
+            for index, item in enumerate(value)
+        ]
+    if origin is tuple:
+        item_types = get_args(expected_type)
+        if not isinstance(value, (list, tuple)) or len(value) != len(item_types):
+            missing_fields.append(path)
+            return ()
+        return tuple(
+            _parse_bp_value(item, item_type, f"{path}[{index}]", missing_fields)
+            for index, (item, item_type) in enumerate(zip(value, item_types))
+        )
+    if origin is dict:
+        if not isinstance(value, dict):
+            missing_fields.append(path)
+            return {}
+        return value
+    return value
+
+
+def _is_optional_type(expected_type: Any) -> bool:
+    origin = get_origin(expected_type)
+    return origin in (Union, UnionType) and type(None) in get_args(expected_type)
+
+
+def _serialize_business_plan_result(value: Any) -> Any:
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value):
+        return {
+            field.name: _serialize_business_plan_result(getattr(value, field.name))
+            for field in dataclass_fields(value)
+        }
+    if isinstance(value, dict):
+        return {
+            str(key): _serialize_business_plan_result(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [_serialize_business_plan_result(item) for item in value]
+    return value
 
 
 def _run_diagnosis_job(
