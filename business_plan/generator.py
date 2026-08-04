@@ -18,6 +18,7 @@ from business_plan.prompts import (
 )
 from business_plan.schemas import (
     DemandIntake,
+    CompetitionIntake,
     FieldOutput,
     FundingIntake,
     GrowthForecastIntake,
@@ -31,7 +32,7 @@ from business_plan.schemas import (
     TEXT_LENGTH_CONSTRAINTS,
     CurrentStateIntake,
 )
-from business_plan.search import search_market_evidence
+from business_plan.search import search_competitor_evidence, search_market_evidence
 from business_plan.validation import validate_rewrite
 
 
@@ -179,6 +180,63 @@ def generate_market_module(intake: MarketIntake) -> ModuleOutput:
         "market_validation": market_validation,
     }
     return _module_output(3, fields)
+
+
+def generate_competition_module(intake: CompetitionIntake) -> ModuleOutput:
+    """Generate module 4 without adding or renaming customer-specified competitors."""
+
+    competitors = []
+    for competitor in intake.competitors:
+        dimensions = {
+            name: _client_or_pending(value)
+            for name, value in competitor.dimensions.items()
+        }
+        evidence = (
+            search_competitor_evidence(4, competitor.name).evidence
+            if any(field.source_type is SourceType.PENDING_CUSTOMER for field in dimensions.values())
+            else []
+        )
+        competitors.append(
+            {
+                "name": _client_or_pending(competitor.name),
+                "dimensions": dimensions,
+                "public_evidence": FieldOutput(
+                    evidence,
+                    SourceType.SEARCH_VALIDATION
+                    if evidence
+                    else SourceType.PENDING_CUSTOMER,
+                    source_ref=evidence[0].source_ref if evidence else None,
+                ),
+            }
+        )
+    _assert_competitor_identity(intake, competitors)
+
+    differentiations = [
+        _rewrite_qualitative_field(
+            "differentiation",
+            differentiation,
+            QUALITATIVE_FIELD_REWRITE_PROMPT,
+        )
+        for differentiation in intake.differentiations
+    ]
+    fields = {
+        "competitors": FieldOutput(competitors, SourceType.CLIENT_PROVIDED),
+        "differentiation": FieldOutput(
+            differentiations,
+            _field_list_source_type(differentiations),
+        ),
+    }
+    return _module_output(4, fields)
+
+
+def _assert_competitor_identity(
+    intake: CompetitionIntake,
+    output_competitors: list[dict[str, Any]],
+) -> None:
+    input_names = [competitor.name for competitor in intake.competitors]
+    output_names = [competitor["name"].value for competitor in output_competitors]
+    if input_names != output_names:
+        raise ValueError("competition output must preserve customer competitor names and order")
 
 
 def _growth_forecast_output(item: GrowthForecastIntake) -> dict[str, FieldOutput]:
