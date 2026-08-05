@@ -11,6 +11,7 @@ import config
 from analysis.llm_client import DeepSeekResponseError, call_deepseek_json
 from business_plan.prompts import (
     HEADLINE_PROMPT,
+    SUB_HEADLINE_PROMPT,
     QUALITATIVE_FIELD_REWRITE_PROMPT,
     SINGLE_PAIN_POINT_PROMPT,
     TEAM_BACKGROUND_REWRITE_PROMPT,
@@ -42,6 +43,13 @@ from business_plan.validation import validate_rewrite
 
 MAX_REWRITE_RETRIES = 2
 HEADLINE_BANNED_PREFIXES = ("本模块", "综上所述", "可以看出")
+SUB_HEADLINE_MODULE_IDS = frozenset((2, 3, 4, 6))
+MAIN_HEADLINE_FIELDS: dict[int, tuple[str, ...]] = {
+    2: ("solution", "core_value"),
+    3: ("market_size", "market_narrative", "market_validation"),
+    4: ("competitors",),
+    6: ("roadmap",),
+}
 
 
 def generate_demand_module(intake_demand: DemandIntake) -> ModuleOutput:
@@ -79,6 +87,7 @@ def generate_demand_module(intake_demand: DemandIntake) -> ModuleOutput:
     return ModuleOutput(
         module_id=1,
         headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
+        sub_headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
         fields=fields,
         chart_data=[],
         text_length_constraints=constraints,
@@ -525,6 +534,7 @@ def _module_output(module_id: int, fields: dict[str, FieldOutput]) -> ModuleOutp
         # Module 0 is not rendered in the report body, so it intentionally has
         # no generated headline; the orchestrator replaces this for modules 1-8.
         headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
+        sub_headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
         fields=fields,
         chart_data=[],
         text_length_constraints=constraints,
@@ -538,16 +548,92 @@ def generate_module_headline(output: ModuleOutput) -> tuple[FieldOutput, int]:
         # Module 0 only feeds the cover and is not a report body section.
         return FieldOutput("", SourceType.PENDING_CUSTOMER), 0
 
-    source_content = _headline_content(output.fields)
+    return _generate_action_title(
+        output.module_id,
+        _main_headline_content(output),
+        HEADLINE_PROMPT,
+    )
+
+
+def _main_headline_content(output: ModuleOutput) -> Any:
+    """Keep split-page modules' main title focused on their first-page fields."""
+
+    allowed_fields = MAIN_HEADLINE_FIELDS.get(output.module_id)
+    if allowed_fields is None:
+        return _headline_content(output.fields)
+    return _headline_content(
+        {
+            field_name: output.fields[field_name]
+            for field_name in allowed_fields
+            if field_name in output.fields
+        }
+    )
+
+
+def generate_module_sub_headline(output: ModuleOutput) -> tuple[FieldOutput, int]:
+    """Generate a split-page action title from a strict module field whitelist."""
+
+    if output.module_id not in SUB_HEADLINE_MODULE_IDS:
+        return FieldOutput("", SourceType.PENDING_CUSTOMER), 0
+    try:
+        source_content = _sub_headline_content(output)
+    except (KeyError, TypeError):
+        return FieldOutput("", SourceType.PENDING_CUSTOMER), 0
+    return _generate_action_title(
+        output.module_id,
+        source_content,
+        SUB_HEADLINE_PROMPT,
+    )
+
+
+def _sub_headline_content(output: ModuleOutput) -> Any:
+    """Return only the user-approved split-page section for each module."""
+
+    if output.module_id == 2:
+        business_model = output.fields["business_model"].value
+        return _headline_content(
+            {
+                "收入结构": business_model["revenue_sources"],
+                "毛利": business_model["gross_margin"],
+                "净利": business_model["net_margin"],
+                "销售模式": output.fields["sales_model"],
+            }
+        )
+    if output.module_id == 3:
+        return _headline_content({"市场增长": output.fields["growth_forecast"]})
+    if output.module_id == 4:
+        return _headline_content({"核心优势": output.fields["differentiation"]})
+    projections = output.fields["financial_projection"].value
+    return _headline_content(
+        {
+            "财务预测": [
+                {
+                    "年份": row["year"],
+                    "收入": row["revenue"],
+                    "净利润": row["net_profit"],
+                }
+                for row in projections
+            ]
+        }
+    )
+
+
+def _generate_action_title(
+    module_id: int,
+    source_content: Any,
+    system_prompt: str,
+) -> tuple[FieldOutput, int]:
+    """Apply shared closed-world validation, retries, and empty fallback."""
+
     source_text = str(source_content)
     constraint = TEXT_LENGTH_CONSTRAINTS["module.headline"]
     last_issues: list[str] = []
     for attempt in range(MAX_REWRITE_RETRIES + 1):
         try:
             response = _call_rewrite(
-                HEADLINE_PROMPT,
+                system_prompt,
                 build_headline_user_prompt(
-                    output.module_id,
+                    module_id,
                     source_content,
                     last_issues if attempt else None,
                 ),

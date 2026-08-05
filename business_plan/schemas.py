@@ -194,6 +194,16 @@ class TeamIntake:
 
 
 @dataclass
+class ContactIntake:
+    """Optional customer-provided contact facts; website is reused from module 0."""
+
+    contact_person: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    address: str | None = None
+
+
+@dataclass
 class BPIntake:
     """Complete customer collection for BP modules 0 through 8."""
 
@@ -206,6 +216,7 @@ class BPIntake:
     plan: PlanIntake
     funding: FundingIntake
     team: TeamIntake
+    contact: ContactIntake | None = None
 
 
 # Chart data schema. FieldOutput keeps chart values subject to the same source
@@ -368,6 +379,7 @@ class ModuleOutput:
 
     module_id: int
     headline: FieldOutput
+    sub_headline: FieldOutput
     fields: dict[str, FieldOutput]
     chart_data: list[ChartData]
     text_length_constraints: dict[str, TextLengthRange]
@@ -400,6 +412,7 @@ class ModuleGenerationStatus:
     duration_seconds: float
     error_message: str | None = None
     headline_attempts: int = 0
+    sub_headline_attempts: int = 0
 
 
 @dataclass
@@ -416,6 +429,7 @@ class GenerationStats:
 
     llm_call_count: int
     headline_call_count: int
+    sub_headline_call_count: int
     search_call_count: int
     minimum_llm_call_count: int
     retry_llm_call_count: int
@@ -425,10 +439,22 @@ class GenerationStats:
 
 
 @dataclass
+class ContactOutput:
+    """Source-marked contact details for the BP back cover."""
+
+    contact_person: FieldOutput
+    phone: FieldOutput
+    email: FieldOutput
+    address: FieldOutput
+    website: FieldOutput
+
+
+@dataclass
 class BPResult:
     """The completed BP, preserving the specification's module 0-8 numbering."""
 
     bp_title: str
+    contact: ContactOutput
     executive_summary: ExecutiveSummaryOutput | None
     project_overview: ModuleOutput | None
     demand: ModuleOutput | None

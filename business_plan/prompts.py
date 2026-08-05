@@ -112,6 +112,16 @@ HEADLINE_PROMPT = """[BP_MODULE_HEADLINE]
 【输出】只返回严格 JSON：{"headline": "..."}
 """
 
+# Sub-headlines obey the same closed-world and anti-expansion rules, while the
+# caller supplies only the split page's explicitly allowed fields.
+SUB_HEADLINE_PROMPT = HEADLINE_PROMPT.replace(
+    "[BP_MODULE_HEADLINE]",
+    "[BP_MODULE_SUB_HEADLINE]",
+).replace(
+    "一个商业计划书正文模块",
+    "一个商业计划书拆分页对应部分",
+)
+
 
 def build_target_customer_user_prompt(
     original_text: str,

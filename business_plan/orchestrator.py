@@ -19,6 +19,7 @@ from business_plan.generator import (
     generate_funding_module,
     generate_market_module,
     generate_module_headline,
+    generate_module_sub_headline,
     generate_overview_module,
     generate_plan_module,
     generate_product_module,
@@ -28,6 +29,7 @@ from business_plan.generator import (
 from business_plan.schemas import (
     BPIntake,
     BPResult,
+    ContactOutput,
     DegradedField,
     FieldOutput,
     GenerationStats,
@@ -74,6 +76,7 @@ def generate_business_plan(intake: BPIntake) -> BPResult:
     with _INSTRUMENTATION_LOCK:
         llm_call_count = 0
         headline_call_count = 0
+        sub_headline_call_count = 0
         search_call_count = 0
         counter_lock = threading.Lock()
         original_urlopen = llm_client_module.request.urlopen
@@ -81,6 +84,7 @@ def generate_business_plan(intake: BPIntake) -> BPResult:
         def counted_urlopen(*args: Any, **kwargs: Any) -> Any:
             nonlocal llm_call_count
             nonlocal headline_call_count
+            nonlocal sub_headline_call_count
             nonlocal search_call_count
             request_url = str(getattr(args[0], "full_url", "")) if args else ""
             with counter_lock:
@@ -89,6 +93,8 @@ def generate_business_plan(intake: BPIntake) -> BPResult:
                     request_data = getattr(args[0], "data", b"") if args else b""
                     if b"[BP_MODULE_HEADLINE]" in (request_data or b""):
                         headline_call_count += 1
+                    elif b"[BP_MODULE_SUB_HEADLINE]" in (request_data or b""):
+                        sub_headline_call_count += 1
                 elif request_url == search_client_module.BOCHA_SEARCH_URL:
                     search_call_count += 1
             return original_urlopen(*args, **kwargs)
@@ -108,11 +114,16 @@ def generate_business_plan(intake: BPIntake) -> BPResult:
         1
         for module_id, status in statuses.items()
         if 1 <= module_id <= 8 and status.status == "success"
+    ) + sum(
+        1
+        for module_id, status in statuses.items()
+        if module_id in (2, 3, 4, 6) and status.status == "success"
     )
     total_duration_seconds = perf_counter() - started_at
     generation_stats = GenerationStats(
         llm_call_count=llm_call_count,
         headline_call_count=headline_call_count,
+        sub_headline_call_count=sub_headline_call_count,
         search_call_count=search_call_count,
         minimum_llm_call_count=minimum_llm_call_count,
         retry_llm_call_count=max(llm_call_count - minimum_llm_call_count, 0),
@@ -122,6 +133,7 @@ def generate_business_plan(intake: BPIntake) -> BPResult:
     )
     return BPResult(
         bp_title=intake.project_overview.bp_title,
+        contact=_build_contact_output(getattr(intake, "contact", None), intake.project_overview),
         executive_summary=None,
         project_overview=outputs.get("project_overview"),
         demand=outputs.get("demand"),
@@ -173,11 +185,14 @@ def _run_single_module(
         )
     headline, headline_attempts = generate_module_headline(output)
     output.headline = headline
+    sub_headline, sub_headline_attempts = generate_module_sub_headline(output)
+    output.sub_headline = sub_headline
     return output, ModuleGenerationStatus(
         module_id=spec.module_id,
         status="success",
         duration_seconds=perf_counter() - started_at,
         headline_attempts=headline_attempts,
+        sub_headline_attempts=sub_headline_attempts,
     )
 
 
@@ -189,8 +204,27 @@ def _collect_pending_items(
         if output is not None:
             if output.module_id != 0:
                 _walk_pending(output.headline, output.module_id, "headline", pending_items)
+            if output.module_id in (2, 3, 4, 6):
+                _walk_pending(output.sub_headline, output.module_id, "sub_headline", pending_items)
             _walk_pending(output.fields, output.module_id, "", pending_items)
     return pending_items
+
+
+def _build_contact_output(contact: Any, project_overview: Any) -> ContactOutput:
+    # C-class customer facts: copy verbatim and never send to the LLM, exactly
+    # like slogan, one_liner, mission, and vision.
+    def direct(value: str | None) -> FieldOutput:
+        if value is None or not value.strip():
+            return FieldOutput("待补充", SourceType.PENDING_CUSTOMER)
+        return FieldOutput(value, SourceType.CLIENT_PROVIDED)
+
+    return ContactOutput(
+        contact_person=direct(contact.contact_person if contact else None),
+        phone=direct(contact.phone if contact else None),
+        email=direct(contact.email if contact else None),
+        address=direct(contact.address if contact else None),
+        website=direct(getattr(project_overview, "website", None)),
+    )
 
 
 def _walk_pending(

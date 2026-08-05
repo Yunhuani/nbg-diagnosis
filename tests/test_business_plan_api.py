@@ -86,3 +86,25 @@ def test_business_plan_jobs_are_isolated_from_diagnosis_jobs():
     assert job_id in api_server._business_plan_jobs
     assert job_id not in api_server._jobs
     assert api_server.get_business_plan(job_id)["status"] == "done"
+
+
+def test_optional_contact_is_parsed_without_repeating_website():
+    payload = _complete_payload()
+    payload["project_overview"]["website"] = "https://example.com"
+    payload["contact"] = {
+        "contact_person": "张明",
+        "phone": "13800000000",
+        "email": "contact@example.com",
+        "address": "深圳市南山区",
+    }
+
+    intake = api_server._parse_bp_intake(payload)
+
+    assert intake.contact.contact_person == "张明"
+    assert not hasattr(intake.contact, "website")
+    assert intake.project_overview.website == "https://example.com"
+
+
+def test_missing_contact_remains_optional():
+    intake = api_server._parse_bp_intake(_complete_payload())
+    assert intake.contact is None

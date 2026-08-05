@@ -11,6 +11,7 @@ def _module_output(module_id: int, fields: dict[str, FieldOutput]) -> ModuleOutp
     return ModuleOutput(
         module_id=module_id,
         headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
+        sub_headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
         fields=fields,
         chart_data=[],
         text_length_constraints={},
