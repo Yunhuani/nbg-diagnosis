@@ -10,6 +10,7 @@ from business_plan.schemas import FieldOutput, ModuleOutput, SourceType
 def _module_output(module_id: int, fields: dict[str, FieldOutput]) -> ModuleOutput:
     return ModuleOutput(
         module_id=module_id,
+        headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
         fields=fields,
         chart_data=[],
         text_length_constraints={},
@@ -126,6 +127,10 @@ def test_orchestrator_keeps_running_when_one_future_raises():
             orchestrator.ModuleSpec(1, "demand", "demand", failure, lambda _: 0),
             orchestrator.ModuleSpec(2, "product_model", "product_model", success(2), lambda _: 0),
         ],
+    ), patch.object(
+        orchestrator,
+        "generate_module_headline",
+        return_value=(FieldOutput("headline", SourceType.ENGINE_REWRITE), 1),
     ):
         result = orchestrator.generate_business_plan(_intake())
 

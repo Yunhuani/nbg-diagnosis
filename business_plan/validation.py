@@ -57,11 +57,17 @@ def validate_rewrite(
     original_text: str,
     rewritten_text: str,
     *,
+    min_chars: int | None = None,
     max_chars: int | None = None,
+    require_keyword_coverage: bool = True,
+    require_quantity_preservation: bool = True,
+    check_rewrite_distance: bool = True,
 ) -> tuple[bool, list[str]]:
     """Check that a rewrite retains core terms and adds no new numeric facts."""
 
     issues: list[str] = []
+    if min_chars is not None and len(rewritten_text.strip()) < min_chars:
+        issues.append("输出低于字数下限，必须形成完整观点")
     if max_chars is not None and len(rewritten_text.strip()) > max_chars:
         issues.append("输出超出字数上限，必须精简")
     original_keywords = _extract_keywords(original_text)
@@ -71,7 +77,7 @@ def validate_rewrite(
         for character in keyword
     }
     rewritten_characters = set(rewritten_text.lower())
-    if core_characters:
+    if require_keyword_coverage and core_characters:
         coverage = len(core_characters & rewritten_characters) / len(core_characters)
         if coverage < KEYWORD_CHARACTER_COVERAGE_THRESHOLD:
             issues.append(f"核心关键词字符覆盖率不足: {coverage:.0%}")
@@ -85,10 +91,11 @@ def validate_rewrite(
 
     original_quantities = set(_QUANTITY_RE.findall(original_text))
     rewritten_quantities = set(_QUANTITY_RE.findall(rewritten_text))
-    issues.extend(
-        f"丢失数量表述: {quantity}"
-        for quantity in sorted(original_quantities - rewritten_quantities)
-    )
+    if require_quantity_preservation:
+        issues.extend(
+            f"丢失数量表述: {quantity}"
+            for quantity in sorted(original_quantities - rewritten_quantities)
+        )
 
     original_percentages = set(_PERCENTAGE_RE.findall(original_text))
     rewritten_percentages = set(_PERCENTAGE_RE.findall(rewritten_text))
@@ -112,16 +119,17 @@ def validate_rewrite(
 
     normalized_original = _normalize_for_similarity(original_text)
     normalized_rewritten = _normalize_for_similarity(rewritten_text)
-    similarity = difflib.SequenceMatcher(
-        None,
-        normalized_original,
-        normalized_rewritten,
-    ).ratio()
-    if normalized_original == normalized_rewritten or similarity >= REWRITE_SIMILARITY_THRESHOLD:
-        issues.append("改写与原文过于接近,未做专业化重述")
+    if check_rewrite_distance:
+        similarity = difflib.SequenceMatcher(
+            None,
+            normalized_original,
+            normalized_rewritten,
+        ).ratio()
+        if normalized_original == normalized_rewritten or similarity >= REWRITE_SIMILARITY_THRESHOLD:
+            issues.append("改写与原文过于接近,未做专业化重述")
 
-    if _has_copied_prefix(normalized_original, normalized_rewritten):
-        issues.append("照抄原文后续写")
+        if _has_copied_prefix(normalized_original, normalized_rewritten):
+            issues.append("照抄原文后续写")
 
     remaining_text = rewritten_text
     found_hollow_phrases = [

@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from dataclasses import asdict, is_dataclass
+from enum import Enum
 from typing import Any
 
 import config
 
 from analysis.llm_client import DeepSeekResponseError, call_deepseek_json
 from business_plan.prompts import (
+    HEADLINE_PROMPT,
     QUALITATIVE_FIELD_REWRITE_PROMPT,
     SINGLE_PAIN_POINT_PROMPT,
     TEAM_BACKGROUND_REWRITE_PROMPT,
     TARGET_CUSTOMER_PROMPT,
     build_field_rewrite_user_prompt,
+    build_headline_user_prompt,
     build_single_pain_point_user_prompt,
     build_target_customer_user_prompt,
 )
@@ -37,6 +41,7 @@ from business_plan.validation import validate_rewrite
 
 
 MAX_REWRITE_RETRIES = 2
+HEADLINE_BANNED_PREFIXES = ("本模块", "综上所述", "可以看出")
 
 
 def generate_demand_module(intake_demand: DemandIntake) -> ModuleOutput:
@@ -73,6 +78,7 @@ def generate_demand_module(intake_demand: DemandIntake) -> ModuleOutput:
     }
     return ModuleOutput(
         module_id=1,
+        headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
         fields=fields,
         chart_data=[],
         text_length_constraints=constraints,
@@ -516,10 +522,80 @@ def _module_output(module_id: int, fields: dict[str, FieldOutput]) -> ModuleOutp
     }
     return ModuleOutput(
         module_id=module_id,
+        # Module 0 is not rendered in the report body, so it intentionally has
+        # no generated headline; the orchestrator replaces this for modules 1-8.
+        headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
         fields=fields,
         chart_data=[],
         text_length_constraints=constraints,
     )
+
+
+def generate_module_headline(output: ModuleOutput) -> tuple[FieldOutput, int]:
+    """Generate one action title, degrading to an empty pending value."""
+
+    if output.module_id == 0:
+        # Module 0 only feeds the cover and is not a report body section.
+        return FieldOutput("", SourceType.PENDING_CUSTOMER), 0
+
+    source_content = _headline_content(output.fields)
+    source_text = str(source_content)
+    constraint = TEXT_LENGTH_CONSTRAINTS["module.headline"]
+    last_issues: list[str] = []
+    for attempt in range(MAX_REWRITE_RETRIES + 1):
+        try:
+            response = _call_rewrite(
+                HEADLINE_PROMPT,
+                build_headline_user_prompt(
+                    output.module_id,
+                    source_content,
+                    last_issues if attempt else None,
+                ),
+            )
+            if set(response) != {"headline"}:
+                raise RewriteValidationError("输出必须且只能包含 headline")
+            headline = response["headline"]
+            if not isinstance(headline, str) or not headline.strip():
+                raise RewriteValidationError("headline 必须是非空字符串")
+            valid, last_issues = validate_rewrite(
+                source_text,
+                headline.strip(),
+                min_chars=constraint.min_chars,
+                max_chars=constraint.max_chars,
+                require_keyword_coverage=False,
+                require_quantity_preservation=False,
+                check_rewrite_distance=False,
+            )
+            if any(headline.strip().startswith(prefix) for prefix in HEADLINE_BANNED_PREFIXES):
+                valid = False
+                last_issues.append("不得使用套话开头")
+            if valid:
+                return FieldOutput(headline.strip(), SourceType.ENGINE_REWRITE), attempt + 1
+        except Exception as exc:
+            last_issues = [str(exc)]
+    return FieldOutput("", SourceType.PENDING_CUSTOMER), MAX_REWRITE_RETRIES + 1
+
+
+def _headline_content(value: Any) -> Any:
+    """Strip provenance metadata and pending values from headline material."""
+
+    if isinstance(value, FieldOutput):
+        if value.source_type is SourceType.PENDING_CUSTOMER:
+            return None
+        return _headline_content(value.value)
+    if isinstance(value, dict):
+        return {
+            key: converted
+            for key, item in value.items()
+            if (converted := _headline_content(item)) is not None
+        }
+    if isinstance(value, (list, tuple)):
+        return [converted for item in value if (converted := _headline_content(item)) is not None]
+    if isinstance(value, Enum):
+        return value.value
+    if is_dataclass(value):
+        return _headline_content(asdict(value))
+    return value
 
 
 def _rewrite_target_customer(original_text: str) -> tuple[str, SourceType]:

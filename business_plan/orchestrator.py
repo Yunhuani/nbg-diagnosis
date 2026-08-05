@@ -18,6 +18,7 @@ from business_plan.generator import (
     generate_demand_module,
     generate_funding_module,
     generate_market_module,
+    generate_module_headline,
     generate_overview_module,
     generate_plan_module,
     generate_product_module,
@@ -72,17 +73,22 @@ def generate_business_plan(intake: BPIntake) -> BPResult:
     started_at = perf_counter()
     with _INSTRUMENTATION_LOCK:
         llm_call_count = 0
+        headline_call_count = 0
         search_call_count = 0
         counter_lock = threading.Lock()
         original_urlopen = llm_client_module.request.urlopen
 
         def counted_urlopen(*args: Any, **kwargs: Any) -> Any:
             nonlocal llm_call_count
+            nonlocal headline_call_count
             nonlocal search_call_count
             request_url = str(getattr(args[0], "full_url", "")) if args else ""
             with counter_lock:
                 if request_url.endswith("/chat/completions"):
                     llm_call_count += 1
+                    request_data = getattr(args[0], "data", b"") if args else b""
+                    if b"[BP_MODULE_HEADLINE]" in (request_data or b""):
+                        headline_call_count += 1
                 elif request_url == search_client_module.BOCHA_SEARCH_URL:
                     search_call_count += 1
             return original_urlopen(*args, **kwargs)
@@ -98,10 +104,15 @@ def generate_business_plan(intake: BPIntake) -> BPResult:
     minimum_llm_call_count = sum(
         spec.minimum_llm_calls(getattr(intake, spec.intake_field))
         for spec in MODULE_SPECS
+    ) + sum(
+        1
+        for module_id, status in statuses.items()
+        if 1 <= module_id <= 8 and status.status == "success"
     )
     total_duration_seconds = perf_counter() - started_at
     generation_stats = GenerationStats(
         llm_call_count=llm_call_count,
+        headline_call_count=headline_call_count,
         search_call_count=search_call_count,
         minimum_llm_call_count=minimum_llm_call_count,
         retry_llm_call_count=max(llm_call_count - minimum_llm_call_count, 0),
@@ -160,10 +171,13 @@ def _run_single_module(
             duration_seconds=perf_counter() - started_at,
             error_message=f"{type(exc).__name__}: {exc}",
         )
+    headline, headline_attempts = generate_module_headline(output)
+    output.headline = headline
     return output, ModuleGenerationStatus(
         module_id=spec.module_id,
         status="success",
         duration_seconds=perf_counter() - started_at,
+        headline_attempts=headline_attempts,
     )
 
 
@@ -173,6 +187,8 @@ def _collect_pending_items(
     pending_items: list[PendingItem] = []
     for output in outputs.values():
         if output is not None:
+            if output.module_id != 0:
+                _walk_pending(output.headline, output.module_id, "headline", pending_items)
             _walk_pending(output.fields, output.module_id, "", pending_items)
     return pending_items
 

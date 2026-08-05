@@ -367,6 +367,7 @@ class ModuleOutput:
     """Source-marked output for one BP module; module 1 may have no chart."""
 
     module_id: int
+    headline: FieldOutput
     fields: dict[str, FieldOutput]
     chart_data: list[ChartData]
     text_length_constraints: dict[str, TextLengthRange]
@@ -398,6 +399,7 @@ class ModuleGenerationStatus:
     status: str
     duration_seconds: float
     error_message: str | None = None
+    headline_attempts: int = 0
 
 
 @dataclass
@@ -413,6 +415,7 @@ class GenerationStats:
     """Per-run observability data for BP cost and quality analysis."""
 
     llm_call_count: int
+    headline_call_count: int
     search_call_count: int
     minimum_llm_call_count: int
     retry_llm_call_count: int
@@ -444,6 +447,7 @@ class BPResult:
 # Recommended character ranges for all narrative text output fields. Structured
 # values and chart labels are intentionally excluded from these render limits.
 TEXT_LENGTH_CONSTRAINTS: dict[str, TextLengthRange] = {
+    "module.headline": TextLengthRange(20, 40),
     "executive_summary.core_claim": TextLengthRange(40, 120),
     "executive_summary.problem": TextLengthRange(80, 220),
     "executive_summary.solution": TextLengthRange(80, 220),

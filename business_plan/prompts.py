@@ -91,6 +91,28 @@ TEAM_BACKGROUND_REWRITE_PROMPT = """你只改写一位团队成员的履历背�
 """
 
 
+HEADLINE_PROMPT = """[BP_MODULE_HEADLINE]
+你只为一个商业计划书正文模块提炼一句观点式结论，不跨模块取材。
+
+【输入】该模块已经生成的全部有效内容；这是唯一允许使用的事实来源。
+【任务】输出一句可直接作为报告页大标题的行动标题，长度必须为 20–40 字。
+
+【铁律】
+1. 只能基于该模块已有内容提炼，不得引入任何新的事实、数字、主体、公司名或机构名。
+   不得把定性表达擅自升级为输入未出现的指标词；例如输入只有“便宜”时，不得改写成“低成本”。
+2. 必须是结论或判断，不是主题标签，也不是对字段的机械复述。
+3. 不得使用“本模块”“综上所述”“可以看出”等套话开头。
+4. 输出必须精炼完整，不得出现 Markdown、解释或任何前后缀。
+
+【示例】
+错误：“市场规模分析”（这是标签）
+错误：“我们的市场很大”（空洞）
+正确：“中小制造数字化，是工业软件中渗透率低、增速快的蓝海”
+
+【输出】只返回严格 JSON：{"headline": "..."}
+"""
+
+
 def build_target_customer_user_prompt(
     original_text: str,
     feedback: list[str] | None = None,
@@ -133,6 +155,36 @@ def build_field_rewrite_user_prompt(
     )
     if max_chars is not None:
         prompt += f"\n\n本字段最多 {max_chars} 字；短句字段必须精炼，不得铺陈展开。"
+    return prompt
+
+
+def build_headline_user_prompt(
+    module_id: int,
+    module_content: object,
+    feedback: list[str] | None = None,
+) -> str:
+    """Build a closed-world action-title request for one BP module."""
+
+    prompt = (
+        "仅可使用以下单个模块内容：\n"
+        + json.dumps(
+            {"module_id": module_id, "module_content": module_content},
+            ensure_ascii=False,
+        )
+    )
+    if feedback:
+        prompt += "\n\n上次输出未通过校验，必须修正以下问题：\n- " + "\n- ".join(feedback)
+        new_indicators = [
+            issue.split(":", 1)[1].strip()
+            for issue in feedback
+            if issue.startswith("新增指标:") and ":" in issue
+        ]
+        if new_indicators:
+            prompt += (
+                "\n后续输出不得再次出现以下新增指标词："
+                + "、".join(new_indicators)
+                + "。必须改用输入中已经存在的表达，不得用同义指标替换。"
+            )
     return prompt
 
 
