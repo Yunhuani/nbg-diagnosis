@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, TypeAlias
 
@@ -77,7 +77,7 @@ class PainPointIntake:
 @dataclass
 class DemandIntake:
     target_customer: str
-    pain_points: tuple[PainPointIntake, PainPointIntake, PainPointIntake]
+    pain_points: list[PainPointIntake]
 
 
 @dataclass
@@ -95,7 +95,7 @@ class RevenueSourceIntake:
 @dataclass
 class ProductModelIntake:
     solutions: list[SolutionIntake]
-    core_values: tuple[str, str, str]
+    core_values: list[str]
     revenue_sources: list[RevenueSourceIntake]
     gross_margin: str
     net_margin: str
@@ -132,8 +132,8 @@ class CompetitorIntake:
 
 @dataclass
 class CompetitionIntake:
-    competitors: list[CompetitorIntake]
-    differentiations: tuple[str, str, str]
+    differentiations: list[str]
+    competitors: list[CompetitorIntake] = field(default_factory=list)
 
 
 @dataclass

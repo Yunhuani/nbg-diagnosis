@@ -108,3 +108,39 @@ def test_optional_contact_is_parsed_without_repeating_website():
 def test_missing_contact_remains_optional():
     intake = api_server._parse_bp_intake(_complete_payload())
     assert intake.contact is None
+
+
+def test_competitors_missing_null_and_empty_are_optional():
+    for value in ("missing", None, []):
+        payload = _complete_payload()
+        if value == "missing":
+            del payload["competition"]["competitors"]
+        else:
+            payload["competition"]["competitors"] = value
+        intake = api_server._parse_bp_intake(payload)
+        assert intake.competition.competitors == []
+
+
+def test_variable_length_required_arrays_accept_one_to_three_and_reject_other_sizes():
+    for field_path in (
+        ("demand", "pain_points"),
+        ("product_model", "core_values"),
+        ("competition", "differentiations"),
+    ):
+        for count in (1, 2, 3):
+            payload = _complete_payload()
+            section, field = field_path
+            values = payload[section][field]
+            payload[section][field] = values[:count]
+            api_server._parse_bp_intake(payload)
+        for count in (0, 4):
+            payload = _complete_payload()
+            section, field = field_path
+            values = payload[section][field]
+            payload[section][field] = values[:1] * count
+            try:
+                api_server._parse_bp_intake(payload)
+            except api_server.BPIntakeValidationError:
+                pass
+            else:
+                raise AssertionError(f"{section}.{field} with {count} items must fail")

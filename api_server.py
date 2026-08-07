@@ -239,6 +239,12 @@ def _parse_bp_dataclass(
             field_path,
             missing_fields,
         )
+        if field_path in {
+            "bp_intake.demand.pain_points",
+            "bp_intake.product_model.core_values",
+            "bp_intake.competition.differentiations",
+        } and not 1 <= len(values[field.name]) <= 3:
+            missing_fields.append(field_path)
     return model(**values)
 
 

@@ -34,6 +34,7 @@ from business_plan.schemas import (
     ProjectOverviewIntake,
     SourceType,
     TeamIntake,
+    TextLengthRange,
     TEXT_LENGTH_CONSTRAINTS,
     CurrentStateIntake,
 )
@@ -84,6 +85,10 @@ def generate_demand_module(intake_demand: DemandIntake) -> ModuleOutput:
         field_name: TEXT_LENGTH_CONSTRAINTS[f"module_1.{field_name}"]
         for field_name in fields
     }
+    constraints["pain_points"] = TextLengthRange(
+        60 * len(intake_demand.pain_points),
+        160 * len(intake_demand.pain_points),
+    )
     return ModuleOutput(
         module_id=1,
         headline=FieldOutput("", SourceType.PENDING_CUSTOMER),
@@ -235,13 +240,21 @@ def generate_competition_module(intake: CompetitionIntake) -> ModuleOutput:
         for differentiation in intake.differentiations
     ]
     fields = {
-        "competitors": FieldOutput(competitors, SourceType.CLIENT_PROVIDED),
+        "competitors": FieldOutput(
+            competitors,
+            SourceType.PENDING_CUSTOMER if not competitors else SourceType.CLIENT_PROVIDED,
+        ),
         "differentiation": FieldOutput(
             differentiations,
             _field_list_source_type(differentiations),
         ),
     }
-    return _module_output(4, fields)
+    output = _module_output(4, fields)
+    output.text_length_constraints["differentiation"] = TextLengthRange(
+        60 * len(differentiations),
+        150 * len(differentiations),
+    )
+    return output
 
 
 def _assert_competitor_identity(
